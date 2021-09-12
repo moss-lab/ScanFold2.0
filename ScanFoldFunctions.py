@@ -1,4 +1,3 @@
-
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import subprocess
 import random
@@ -87,7 +86,8 @@ def makedbn(ctfile, name):
             rows = line.split()
             icoord = int(rows[0])
             jcoord = int(rows[-2])
-            if len(rows[1]) > 1:
+            #print(line)
+            if len(rows) > 6:
                 print("skipping header")
                 continue
 
@@ -603,15 +603,25 @@ def nuc_dict_to_seq(nucleotide_dictionary):
 
     return fasta_sequence
 
-def write_wig_dict(nucleotide_dictionary, outputfilename, name, step_size):
-
+def write_wig_dict(nucleotide_dictionary, outputfilename, name, step_size, metric):
     w = open(outputfilename, 'w')
     #write wig file header
     w.write("%s %s %s %s %s\n" % ("fixedStep", "chrom="+name, "start=1", "step="+str(step_size), "span="+str(step_size)))
-
     #write values of zscores
     for k, v in nucleotide_dictionary.items():
-        w.write("%f\n" % (v.zscore))
+        if str(metric) == 'zscore':
+            zscore = float(v.zscore)
+            w.write("%f\n" % (zscore))
+
+        elif str(metric) == 'mfe':
+            mfe = float(v.mfe)
+            w.write("%f\n" % (mfe))
+
+        elif str(metric) == 'ed':
+            ed = float(v.ed)
+            w.write("%f\n" % (ed))
+        else:
+            print("Set metric to zscore, mfe, or ed")
 
 def write_wig(metric_list, step, name, outputfilename):
     w = open(outputfilename, 'w')
@@ -729,10 +739,10 @@ def pvalue_function(energy_list, randomizations):
 
 ###### Function to calculate ZScore on list of MFEs #################
 def zscore_function(energy_list, randomizations):
-    mean = statistics.mean(energy_list)
-    sd = statistics.stdev(energy_list)
+    mean = np.mean(energy_list)
+    sd = np.std(energy_list)
     native_mfe = energy_list[0]
-    scrambled_mean_mfe = statistics.mean(energy_list[1:randomizations])
+    scrambled_mean_mfe = np.mean(energy_list[1:randomizations])
     #scrambled_sd = statistics.stdev(energy_list[1:randomizations])
     if sd != 0:
         zscore = (native_mfe - scrambled_mean_mfe)/sd
@@ -1134,7 +1144,7 @@ def get_dinucleotide_counts(frag):
 
     return(all_counts)
 
-def get_frag_feature_list(seq, step_size, window_size):
+def get_frag_feature_list(seq, step_size, window_size, algo, temperature):
     frag_list = []
     start_coordinate_list = []
     end_coordinate_list = []
@@ -1145,20 +1155,71 @@ def get_frag_feature_list(seq, step_size, window_size):
     centroid_list = []
     mfe_list = []
     ed_list = []
+    di_freq_list = []
 
-    i = 1
-    while i == 1 or i <= (len(seq) - window_size):
-        start_coordinate = i # This will just define the start nucleotide coordinate value
+    i = 0
+    while i == 0 or i <= (len(seq) - window_size):
+        start_coordinate = i+1 # This will just define the start nucleotide coordinate value
         start_coordinate_list.append(start_coordinate)
-        end_coordinate = i-1 + window_size
+        end_coordinate = i + window_size
         end_coordinate_list.append(end_coordinate)
         frag = str(seq[i:i+int(window_size)]) # This breaks up sequence into fragments
+        #print(frag)
         frag_list.append(frag)
-
         GCpercent = get_gc_content(frag)
         CGratio = get_cg_ratio(frag)
         AUratio = get_au_ratio(frag)
         di_freqs = get_di_freqs(frag)
+        di_freq_list.append(di_freqs)
+        GCpercent_list.append(GCpercent)
+        CGratio_list.append(CGratio)
+        AUratio_list.append(AUratio)
+        if algo == "rnafold":
+            fc = RNA.fold_compound(frag)
+            fc.pf()
+            (centroid, distance) = fc.centroid()
+            ensemble_diversity = round(fc.mean_bp_distance(), 2)
+            (structure, native_mfe) = fc.mfe()
+            #print(structure, native_mfe)
+            native_mfe = round(native_mfe, 2)
+        elif algo == "rnastructure":
+            temp_kelvin = temperature+273.15
+            args = ["Fold", "-k", "-mfe", "-T", str(temp_kelvin), "-", "-"]
+            fc = subprocess.run(args, input=str(frag), check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out = str(fc.stdout)
+            test = out.splitlines()
+            structure = test[2].split()[0]
+            #print(structure)
+            centroid = "NA"
+            native_mfe = test[0].split(" ", 3)[2]
+            try:
+                native_mfe = float(native_mfe)
+            except:
+                print("Error parsing MFE values", test)
+            ensemble_diversity = 0.0
+        else:
+            print("No folding algorihm properly passed to function.")
+
+        centroid_list.append(centroid)
+        ed_list.append(ensemble_diversity)
+        structure_list.append(structure)
+        mfe_list.append(native_mfe)
+        i += step_size
+        #print(i)
+
+    if step_size > 1:
+        start_coordinate = (len(seq)-window_size)+1 # This will just define the start nucleotide coordinate value
+        start_coordinate_list.append(start_coordinate)
+        end_coordinate = len(seq)
+        end_coordinate_list.append(end_coordinate)
+        frag = str(seq[start_coordinate:end_coordinate]) # This breaks up sequence into fragments
+        #print(frag)
+        frag_list.append(frag)
+        GCpercent = get_gc_content(frag)
+        CGratio = get_cg_ratio(frag)
+        AUratio = get_au_ratio(frag)
+        di_freqs = get_di_freqs(frag)
+        di_freq_list.append(di_freqs)
         GCpercent_list.append(GCpercent)
         CGratio_list.append(CGratio)
         AUratio_list.append(AUratio)
@@ -1173,9 +1234,255 @@ def get_frag_feature_list(seq, step_size, window_size):
         ed_list.append(ensemble_diversity)
         structure_list.append(structure)
         mfe_list.append(native_mfe)
-        i += step_size
 
     length_list = [window_size] * len(frag_list)
     return (start_coordinate_list, end_coordinate_list, frag_list, length_list,
             GCpercent_list, CGratio_list, AUratio_list,
-            mfe_list, structure_list, centroid_list, ed_list)
+            mfe_list, structure_list, centroid_list, ed_list, di_freq_list)
+
+def write_bp_from_df(dataframe, filename, start_coordinate, name, minz):
+
+    w = open(filename, 'w')
+        #set color for bp file (igv format)
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 55, 129, 255, str("Less than -2 "+str(minz))))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 89, 222, 111, "-1 to -2"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 236, 236, 136, "0 to -1"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 199, 199, 199, "0"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 228, 228, 228, "0 to 1"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 243, 243, 243, "1 to 2"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 247, 247, 247, str("Greater than 2")))
+
+    for index, row in dataframe.iterrows():
+        #choose color
+        if float(row["z_avg"]) < float(-2):
+            score = str(0)
+            #print(k, row["z_avg"], score)
+
+        elif (float(row["z_avg"]) < int(-1)) and (float(row["z_avg"]) >= -2):
+            score = str(1)
+            #print(k, row["z_avg"], score)
+
+        elif (float(row["z_avg"]) < int(0)) and (float(row["z_avg"]) >= -1):
+            score = str(2)
+            #print(k, row["z_avg"], score)
+
+        elif float(row["z_avg"]) == 0 :
+            score = str(3)
+            #print(k, row["z_avg"], score)
+
+        elif 0 < float(row["z_avg"]) <= 1:
+            score = str(4)
+            #print(k, row["z_avg"], score)
+
+        elif 1 < float(row["z_avg"]) <= 2:
+            score = str(5)
+            #print(k, row["z_avg"], score)
+
+        elif float(row["z_avg"]) > 2:
+            score = str(6)
+            #print(k, row["z_avg"], score)
+
+        else:
+            print(f"Error finding zavg value at {row}")
+
+
+        score = str(score)
+
+        # ensure coordinates to start at 1 to match with converted fasta file
+        sc = int(int(start_coordinate)-1)
+        #print(length)
+
+
+        if int(row["i_bp"]) < int(row["j_bp"]):
+            #w.write("%d\t%d\t%f\n" % (k, int(row["j_bp"]), float(-(math.log10(probability)))))
+            # print(name, int(row["i_bp"]), int(row["i_bp"]), int(row["j_bp"]), int(row["j_bp"]), score)
+            # print(name, str(int(row["i_bp"])-sc), str(int(row["i_bp"])-sc), str(int(row["j_bp"])-sc), str(int(row["j_bp"])-sc), score)
+            w.write("%s\t%d\t%d\t%d\t%d\t%s\n" % (name, int(row["i_bp"])-sc, int(row["i_bp"])-sc, int(row["j_bp"])-sc, int(row["j_bp"])-sc, score))
+        elif int(row["i_bp"]) > int(row["j_bp"]):
+            # print(name, int(row["i_bp"]), int(row["i_bp"]), int(row["j_bp"]), int(row["j_bp"]), score)
+            # print(name, str(int(row["i_bp"])-sc), str(int(row["i_bp"])-sc), str(int(row["j_bp"])-sc), str(int(row["j_bp"])-sc), score)
+            w.write("%s\t%d\t%d\t%d\t%d\t%s\n" % (name, int(row["i_bp"])-sc, int(row["i_bp"])-sc, int(row["j_bp"])-sc, int(row["j_bp"])-sc, score))
+        elif int(row["i_bp"]) == int(row["j_bp"]):
+            # print(name, int(row["i_bp"]), int(row["i_bp"]), int(row["j_bp"]), int(row["j_bp"]), score)
+            # print(name, str(int(row["i_bp"])-sc), str(int(row["i_bp"])-sc), str(int(row["j_bp"])-sc), str(int(row["j_bp"])-sc), score)
+            w.write("%s\t%d\t%d\t%d\t%d\t%s\n" % (name, (row["i_bp"])-sc, (row["i_bp"])-sc, int(row["j_bp"])-sc, int(row["j_bp"])-sc, score))
+        else:
+            print("2 Error at:", row["i_bp"])
+
+def write_ct_from_df(dataframe, filename, filter, strand, name, start_coordinate):
+    #Function to write connectivity table files from a list of best i-j pairs
+    w = open(filename, 'w')
+    w.write((str(len(dataframe))+"\t"+name+"\n"))
+    if strand == 1:
+        i = 0
+        for index, row in dataframe.iterrows():
+            #print(start_coordinate)
+            #print(row["i_bp"])
+            icoordinate = str(int(row["i_bp"])-int(int(start_coordinate)-1))
+            #print(icoordinate)
+            jcoordinate = str(int(row["j_bp"])-int(int(start_coordinate)-1))
+            #print(jcoordinate)
+            key_coordinate = (icoordinate)
+            #print(key_coordinate, icoordinate, jcoordinate)
+            if float(row["z_avg"]) < filter:
+                if ((int(icoordinate) < int(jcoordinate)) and (int(icoordinate) == int(key_coordinate))): #test to see if reverse bp.
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, int(jcoordinate), int(key_coordinate)))
+
+                elif ((int(icoordinate) > int(jcoordinate)) and (int(icoordinate) == int(key_coordinate))): #test to see if reverse bp.
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, int(jcoordinate), int(key_coordinate)))
+
+                elif (int(icoordinate) < int(jcoordinate)) and (int(key_coordinate) == int(jcoordinate)):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_j"], int(key_coordinate)-1, int(key_coordinate)+1, int(icoordinate), int(key_coordinate)))
+
+                elif (int(icoordinate) > int(jcoordinate)) and (int(key_coordinate) == int(jcoordinate)):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_j"], int(key_coordinate)-1, int(key_coordinate)+1, int(icoordinate), int(key_coordinate)))
+
+                elif int(icoordinate) == int(jcoordinate):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, 0, int(key_coordinate)))
+                #
+                # elif (int(key_coordinate) != icoordinate) and (int(key_coordinate) != int(jcoordinate)):
+                #     continue
+                #     #w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, 0, int(key_coordinate)))
+                else:
+                    print("Error at", int(key_coordinate), row["nuc_i"], icoordinate, row["nuc_j"], int(jcoordinate), row["z_avg"])
+                i += 1
+            else:
+                #print(key_coordinate, icoordinate, jcoordinate)
+                if int(key_coordinate) == int(icoordinate):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, 0, int(key_coordinate)))
+                elif int(key_coordinate) == int(jcoordinate):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_j"], int(key_coordinate)-1, int(key_coordinate)+1, 0, int(key_coordinate)))
+                else:
+                    print("WriteCT function did not find a nucleotide to match coordinate (i or j coordinate does not match dictionary key_coordinateey_coordinateey)")
+                i += 1
+
+    if strand == -1:
+        print("FIX REVERSE STRAND WRITE CT FROM DF")
+        for index, row in sorted(dataframes.iterrows(), key=lambda x:x[0], reverse = True):
+            # print(start_coordinate)
+            # print(end_coordinate)
+            # print("i="+str(v.icoordinate))
+            # print("j="+str(row["j_bp"]))
+            # print("k="+str(k))
+            icoordinate = str(int(end_coordinate)+1-(int(int(row["i_bp"]))))
+            # print("i_after"+str(icoordinate))
+            jcoordinate = str(int(end_coordinate)+1-(int(int(row["j_bp"]))))
+            # print("j_after="+str(jcoordinate))
+            key_coordinate = str(int(end_coordinate)-int(k)+1)
+            # print("key="+str(key_coordinate))
+            if float(row["z_avg"]) < filter:
+                if ((int(icoordinate) < int(jcoordinate)) and (int(icoordinate) == int(key_coordinate))): #test to see if reverse bp.
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, int(jcoordinate), int(key_coordinate)))
+
+                elif ((int(icoordinate) > int(jcoordinate)) and (int(icoordinate) == int(key_coordinate))): #test to see if reverse bp.
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, int(jcoordinate), int(key_coordinate)))
+
+                elif (int(icoordinate) < int(jcoordinate)) and (int(key_coordinate) == int(jcoordinate)):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_j"], int(key_coordinate)-1, int(key_coordinate)+1, int(icoordinate), int(key_coordinate)))
+
+                elif (int(icoordinate) > int(jcoordinate)) and (int(key_coordinate) == int(jcoordinate)):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_j"], int(key_coordinate)-1, int(key_coordinate)+1, int(icoordinate), int(key_coordinate)))
+
+                elif int(icoordinate) == int(jcoordinate):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, 0, int(key_coordinate)))
+                #
+                # elif (int(key_coordinate) != icoordinate) and (int(key_coordinate) != int(jcoordinate)):
+                #     continue
+                #     #w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, 0, int(key_coordinate)))
+                else:
+                    print("Error at", int(key_coordinate), row["nuc_i"], icoordinate, row["nuc_j"], int(jcoordinate), row["z_avg"])
+            else:
+                if int(key_coordinate) == int(icoordinate):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_i"], int(key_coordinate)-1, int(key_coordinate)+1, 0, int(key_coordinate)))
+                elif int(key_coordinate) == int(jcoordinate):
+                    w.write("%d %s %d %d %d %d\n" % (int(key_coordinate), row["nuc_j"], int(key_coordinate)-1, int(key_coordinate)+1, 0, int(key_coordinate)))
+                else:
+                    raise ValueError("WriteCT function did not find a nucleotide to match coordinate (i or j coordinate does not match dictionary key_coordinateey_coordinateey)")
+                continue
+
+
+# def pairs_to_dataframe(sequence, structure):
+#     fold_i = 0
+#     for pair in structure:
+#         #Unpaired nucleotide
+#         if pair == '.':
+#             nucleotide = sequence[fold_i]
+#             coordinate = (fold_i + start_coordinate)
+#             #print(nucleotide, coordinate)
+#             '''
+#             bp_dict = bp_dict.append({'nuc_i':nucleotide, 'i_bp':coordinate,
+#                                 'nuc_j':nucleotide, 'j_bp':coordinate,
+#                         'z':row["Z-score"], 'mfe':row["NativeMFE"],
+#                                 'ed':row["ED"]}, ignore_index=True)
+#             '''
+#             fold_i += 1
+#         else:
+#             fold_i += 1
+#
+#         #Inititate base pair tabulation variables
+#         bond_order = []
+#         bond_count = 0
+#
+#         #Iterate through sequence to assign nucleotides to structure type
+#         m = 0
+#         for pair in structure:
+#             if pair == '(':
+#                 bond_count += 1
+#                 bond_order.append(bond_count)
+#                 m += 1
+#             elif pair == ')':
+#                 bond_order.append(bond_count)
+#                 bond_count -= 1
+#                 m += 1
+#             elif pair == '.':
+#                 bond_order.append(0)
+#                 m += 1
+#             else:
+#                 print("Error1")
+#
+#         #Initiate base_pair list
+#         base_pairs = []
+#
+#         #Create empty variable named test
+#         test = ""
+#
+#         #Iterate through bond order
+#         j = 0
+#         while j < len(bond_order):
+#         if bond_order[j] != 0:
+#             test = bond_order[j]
+#             base_pairs.append(j+1)
+#             bond_order[j] = 0
+#             j += 1
+#             k = 0
+#             while k < len(bond_order):
+#                 if bond_order[k] == test:
+#                     base_pairs.append(k+1)
+#                     bond_order[k] = 0
+#                     k += 1
+#                 else:
+#                     k += 1
+#         else:
+#             j += 1
+#
+#         #Iterate through "base_pairs" "to define bps
+#         l = 0
+#         while l < len(base_pairs):
+#         lbp = base_pairs[l]
+#         rbp = base_pairs[l+1]
+#
+#         lb = str(sequence[int(lbp)-1])
+#         rb = str(sequence[int(rbp)-1])
+#
+#         lbp_coord = int(int(lbp)+int(row["Start"])-1)
+#         rbp_coord = int(int(rbp)+int(row["Start"])-1)
+#
+#         bp_dict = bp_dict.append({'nuc_i':lb, 'i_bp':lbp_coord,
+#                             'nuc_j':rb, 'j_bp':rbp_coord,
+#                     'z':row["Z-score"], 'mfe':row["NativeMFE"],
+#                             'ed':row["ED"]}, ignore_index=True)
+#         bp_dict = bp_dict.append({'nuc_i':rb, 'i_bp':rbp_coord,
+#                             'nuc_j':lb, 'j_bp':lbp_coord,
+#                     'z':row["Z-score"], 'mfe':row["NativeMFE"],
+#                             'ed':row["ED"]}, ignore_index=True)
+#         l += 2
