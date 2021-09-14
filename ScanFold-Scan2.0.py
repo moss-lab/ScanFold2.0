@@ -22,6 +22,9 @@ import argparse
 from Bio import SeqIO
 import pandas as pd
 import tensorflow as tf
+import os
+
+script_dir = os.path.dirname(os.path.realpath(__file__))
 
 ### Arguments
 parser = argparse.ArgumentParser()
@@ -53,8 +56,8 @@ basename = myfasta.split('.')[0]
 # stddev_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/5variable_stddevMFEmodel')
 
 ### 4 feature models
-mfe_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/MeanMFE')
-stddev_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/StdDev')
+mfe_model = tf.keras.models.load_model(os.path.join(script_dir, 'MeanMFE'))
+stddev_model = tf.keras.models.load_model(os.path.join(script_dir, 'StdDev'))
 
 ### Start main loop
 with open(myfasta, 'r') as forward_fasta:
