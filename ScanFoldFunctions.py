@@ -14,6 +14,7 @@ import RNA
 import multiprocessing
 import numpy as np
 from random import randint
+import tarfile
 
 ### Tensorflow imports
 import pandas as pd
@@ -1399,6 +1400,21 @@ def write_ct_from_df(dataframe, filename, filter, strand, name, start_coordinate
                 else:
                     raise ValueError("WriteCT function did not find a nucleotide to match coordinate (i or j coordinate does not match dictionary key_coordinateey_coordinateey)")
                 continue
+
+def merge_files(destination, *sources):
+    with open(destination, 'w') as outfile:
+        for fname in sources:
+            with open(fname) as infile:
+                for line in infile:
+                    outfile.write(line)
+
+def make_tar(destination, source):
+    with open(destination, 'wb') as output_wb:
+        tar = tarfile.open(mode="w:gz", fileobj=output_wb)
+        _, _, filenames = next(os.walk(source))
+        for name in filenames:
+            tar.add(name)
+        tar.close()
 
 
 # def pairs_to_dataframe(sequence, structure):

@@ -50,6 +50,8 @@ parser.add_argument('--folder_name',  type=str,
                     help='Name of output folder (defaults to header name or date/time)', default=None)
 parser.add_argument('-t', type=int, default=37,
                     help='Folding temperature in celsius; default = 37C')
+parser.add_argument('--webserver', type=str,
+        help='If provided, the output folder is compressed into a tar.gz file and written to the path specified by this parameter')
 
 
 args = parser.parse_args()
@@ -79,6 +81,7 @@ with open(filename, 'r') as f:
     if folder_name != None:
         try:
             print("Putting output in folder named:"+folder_name)
+            full_output_path = os.path.join(cwd, folder_name)
             os.mkdir(cwd+"/"+folder_name)
             os.chdir(cwd+"/"+folder_name)
             folder_name = str(folder_name)
@@ -89,8 +92,9 @@ with open(filename, 'r') as f:
         try:
             folder_name = outname+".Fold_output"
             print("Putting output in folder named:"+outname)
-            os.mkdir(cwd+"/"+outname+"_fold")
-            os.chdir(cwd+"/"+outname+"_fold")
+            full_output_path = os.path.join(cwd, outname+"_fold")
+            os.mkdir(full_output_path)
+            os.chdir(full_output_path)
             folder_name = str(outname+"_fold")
         except:
             print(f"WARNING: FOLDER NAME [{folder_name}] IS NOT UNIQUE")
@@ -647,8 +651,7 @@ if competition == 1:
 
 write_fasta(nuc_dict, outname+".fa", outname)
 print("ScanFold-Fold analysis complete! Refresh page to ensure proper loading of IGV")
-os.system(str("/bin/bash -c 'cat "+str(dbn_file_path1+".dbn")+" <(echo) "+str(dbn_file_path2+".dbn")+" <(echo) "+str(dbn_file_path3+".dbn")+" > "+str(dbn_file_path4)+"'"))
-
+merge_files(str(dbn_file_path4), str(dbn_file_path1+".dbn"), str(dbn_file_path2+".dbn"), str(dbn_file_path3+".dbn"))
 
 if global_refold == True:
     print("The global_refold section of code is a work in progress.")
@@ -687,7 +690,7 @@ if global_refold == True:
     dbn_log_file.write(">"+str(name)+"\tRefolded with -1 constraints MFE="+str(refolded_filter1_MFE)+"\n"+str(full_fasta_sequence)+"\n"+str(refolded_filter1_structure)+"\n")
     dbn_log_file.write(">"+str(name)+"\tRefolded with -2 constraints MFE="+str(refolded_filter2_MFE)+"\n"+str(full_fasta_sequence)+"\n"+str(refolded_filter2_structure)+"\n")
     dbn_log_file.close()
-    os.system(str("cat "+str(dbn_file_path1+".dbn")+" "+str(dbn_file_path2+".dbn")+" "+str(dbn_file_path3+".dbn")+" > "+str(dbn_file_path4)))
+    merge_files(str(dbn_file_path4), str(dbn_file_path1+".dbn"), str(dbn_file_path2+".dbn"), str(dbn_file_path3+".dbn"))
     dbn_log_file.close()
     # except:
     #     print("Automatic refold for "+cur_record.name+" failed. Run manually")
@@ -696,7 +699,7 @@ if global_refold == True:
     #     continue
 
 if global_refold == False:
-    os.system(str("cat "+str(dbn_file_path1+".dbn")+" "+str(dbn_file_path2+".dbn")+" "+str(dbn_file_path3+".dbn")+" > "+str(dbn_file_path4)))
+    merge_files(str(dbn_file_path4), str(dbn_file_path1+".dbn"), str(dbn_file_path2+".dbn"), str(dbn_file_path3+".dbn"))
 
 #############
 #Begin the structure extract process
@@ -927,3 +930,6 @@ se.close()
 elapsed_time = round((time.time() - start_time), 2)
 print("Total runtime: "+str(elapsed_time)+"s")
 print("ScanFold-Fold analysis complete! Output found in folder named: "+folder_name)
+
+if args.webserver:
+    make_tar(args.webserver, full_output_path)
