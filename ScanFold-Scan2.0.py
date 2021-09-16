@@ -41,6 +41,10 @@ parser.add_argument('-r', type=int, default=100,
 parser.add_argument('--algorithm', type=str, default="rnafold",
         help='Folding algorithm used; rnafold, rnastructure, mxfold')
 
+# needed for webserver
+parser.add_argument('--webserver', type=str,
+        help='If provided, only the first sequence in the fasta file is evaluated and the result is written to the path specified by this parameter')
+
 ### Parse arguments and convert to variables
 args = parser.parse_args()
 myfasta = args.filename
@@ -73,7 +77,10 @@ with open(myfasta, 'r') as forward_fasta:
         name = read_name
         ### Create output files
         output = str(read_name+"."+str(myfasta)+".ScanFold.")
-        outname = str(read_name+".win_"+str(window_size)+".stp_"+str(step_size)+".tsv")
+        if args.webserver:
+            outname = args.webserver
+        else:
+            outname = str(read_name+".win_"+str(window_size)+".stp_"+str(step_size)+".tsv")
 
         ### Grab sequence and its features
         cur_record_length = len(cur_record.seq)
@@ -133,3 +140,6 @@ with open(myfasta, 'r') as forward_fasta:
 
         elapsed_time = round((time.time() - start_time), 2)
         print("ScanFold-Scan complete. Elapsed time: "+str(elapsed_time)+"s")
+
+        if args.webserver:
+            break
