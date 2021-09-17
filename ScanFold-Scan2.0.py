@@ -161,6 +161,6 @@ if __name__ == "__main__":
     if not isinstance(loglevel, int):
         raise ValueError('Invalid log level: %s' % loglevel)
 
-    logging.basicConfig(stream=args.logfile, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', encoding='utf-8', filemode='w', level=loglevel)
+    logging.basicConfig(stream=args.logfile, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', filemode='w', level=loglevel)
 
     main(args)
