@@ -936,7 +936,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', type=int, default=37,
                         help='Folding temperature in celsius; default = 37C')
     # webserver stuff
-    parser.add_argument('--logfile', default="/dev/stdout", type=str,
+    parser.add_argument('--logfile', default=sys.stdout, type=argparse.FileType('w', encoding='UTF-8'),
             help='Path to write log file to.')
     parser.add_argument('--loglevel', default="INFO", type=str,
             help='Log level.')
@@ -949,6 +949,6 @@ if __name__ == "__main__":
     if not isinstance(loglevel, int):
         raise ValueError('Invalid log level: %s' % loglevel)
 
-    logging.basicConfig(filename=args.logfile, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', encoding='utf-8', filemode='w', level=loglevel)
+    logging.basicConfig(stream=args.logfile, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', encoding='utf-8', filemode='w', level=loglevel)
 
     main(args)
