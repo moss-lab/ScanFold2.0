@@ -123,7 +123,7 @@ def main(args):
             df.to_csv(outname, sep="\t", index=False)
 
             elapsed_time = round((time.time() - start_time), 2)
-            print("ScanFold-Scan complete. Elapsed time: "+str(elapsed_time)+"s")
+            logging.info("ScanFold-Scan complete. Elapsed time: "+str(elapsed_time)+"s")
 
             if args.webserver:
                 break
