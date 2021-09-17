@@ -163,4 +163,14 @@ if __name__ == "__main__":
 
     logging.basicConfig(stream=args.logfile, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=loglevel)
 
-    main(args)
+    try:
+        main(args)
+    except Exception as e:
+
+        if args.webserver:
+            # log so it shows up
+            logging.error(e, exc_info=True)
+
+        # still raise exception
+        raise
+
