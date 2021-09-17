@@ -23,6 +23,8 @@ import pandas as pd
 import tensorflow as tf
 import os
 
+import logging
+
 def main(args):
 
     start_time = time.time()
@@ -144,10 +146,20 @@ if __name__ == "__main__":
             help='Folding algorithm used; rnafold, rnastructure, mxfold')
 
     # needed for webserver
+    parser.add_argument('--logfile', default="/dev/stdout", type=str,
+            help='Path to write log file to.')
+    parser.add_argument('--loglevel', default="INFO", type=str,
+            help='Log level.')
     parser.add_argument('--webserver', type=str,
             help='If provided, only the first sequence in the fasta file is evaluated and the result is written to the path specified by this parameter')
 
     ### Parse arguments and convert to variables
     args = parser.parse_args()
+
+    loglevel = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(loglevel, int):
+        raise ValueError('Invalid log level: %s' % loglevel)
+
+    logging.basicConfig(filename=args.logfile, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', encoding='utf-8', filemode='w', level=loglevel)
 
     main(args)

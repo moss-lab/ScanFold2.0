@@ -32,6 +32,8 @@ from itertools import repeat
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
+import logging
+
 def main(args):
 
     start_time = time.time()
@@ -56,29 +58,29 @@ def main(args):
             filename_split = filename.split(".tsv")
             outname = filename_split[0]
         except:
-            print("Input name should have .tsv extension")
+            logging.info("Input name should have .tsv extension")
             outname = filename
 
         if folder_name != None:
             try:
-                print("Putting output in folder named:"+folder_name)
+                logging.info("Putting output in folder named:"+folder_name)
                 full_output_path = os.path.join(cwd, folder_name)
                 os.mkdir(cwd+"/"+folder_name)
                 os.chdir(cwd+"/"+folder_name)
                 folder_name = str(folder_name)
             except:
-                print(f"WARNING: FOLDER NAME [{folder_name}] IS NOT UNIQUE")
+                logging.info(f"WARNING: FOLDER NAME [{folder_name}] IS NOT UNIQUE")
                 raise FileExistsError("Folder name exists. Manually input unique folder name via --folder_name [FOLDER NAME]")
         else:
             try:
                 folder_name = outname+".Fold_output"
-                print("Putting output in folder named:"+outname)
+                logging.info("Putting output in folder named:"+outname)
                 full_output_path = os.path.join(cwd, outname+"_fold")
                 os.mkdir(full_output_path)
                 os.chdir(full_output_path)
                 folder_name = str(outname+"_fold")
             except:
-                print(f"WARNING: FOLDER NAME [{folder_name}] IS NOT UNIQUE")
+                logging.info(f"WARNING: FOLDER NAME [{folder_name}] IS NOT UNIQUE")
                 raise FileExistsError("Folder name exists. Manually input unique folder name via --folder_name [FOLDER NAME]")
 
         lines = f.readlines()[1:] # skip header
@@ -104,15 +106,15 @@ def main(args):
         #Generate nucleotide dictionary to assign each nucleotide in sequence a key
         nuc_dict = NucleotideDictionary(lines)
         full_fasta_sequence = nuc_dict_to_seq(nuc_dict)
-        print("Sequence length: "+str(len(nuc_dict))+"nt")
+        logging.info("Sequence length: "+str(len(nuc_dict))+"nt")
         # if len(nuc_dict) > 1000:
         #     raise SystemExit('Input sequence is longer than 1000 nt; in order to scan longer sequences consider using the stand alone programs (avaiable here: https://github.com/moss-lab/ScanFold)')
 
         #Determine start and end coordinate values
         start_coordinate = str(list(nuc_dict.keys())[0])
-        #print(start_coordinate)
+        #logging.info(start_coordinate)
         end_coordinate = str(list(nuc_dict.keys())[-1])
-        #print(end_coordinate)
+        #logging.info(end_coordinate)
 
         #initiate value lists
         MFE_list = []
@@ -121,7 +123,7 @@ def main(args):
         ED_list = []
 
         #Iterate through input file, read each rows metrics, sequence, etc.
-        print("Reading sequence and structures...")
+        logging.info("Reading sequence and structures...")
         for row in lines:
 
             #Ignore blank lines
@@ -195,7 +197,7 @@ def main(args):
                         bond_order.append(0)
                         m += 1
                     else:
-                        print("Error")
+                        logging.info("Error")
 
                 #Initiate base_pair list
                 base_pairs = []
@@ -277,8 +279,8 @@ def main(args):
 
     #Iterate through initial i-nuc dictionary to determine best base pairs (round 1)
     elapsed_time = round((time.time() - start_time), 2)
-    print("Elapsed time: "+str(elapsed_time)+"s")
-    print("Determining best base pairs...")
+    logging.info("Elapsed time: "+str(elapsed_time)+"s")
+    logging.info("Determining best base pairs...")
     for k, v in sorted(bp_dict.items()):
         #Initiate local dictionaries to store metrics per nucleotide
         zscore_dict = {}
@@ -290,7 +292,7 @@ def main(args):
         for pair in v:
             #Create a key  which contains nucleotide and coordinate info
             partner_key = str(pair.jnucleotide)+"-"+str(pair.jcoordinate)
-            #print(partner_key)
+            #logging.info(partner_key)
 
             #Create a variable which contains all i-j pair info
             x = NucPair(pair.inucleotide, pair.icoordinate, pair.jnucleotide,
@@ -367,7 +369,7 @@ def main(args):
 
         #Print first line of log file tables (first half of log file)
         k_nuc = str((nuc_dict[k].nucleotide))
-        #print(k_nuc)
+        #logging.info(k_nuc)
         log_total.write("\ni-nuc\tBP(j)\tNuc\t#BP_Win\tavgMFE\tavgZ\tavgED"
             +"\tSumZ\tSumZ/#TotalWindows\tBPs= "+str(num_bp)+"\n")
         log_total.write("nt-"+str(k)+"\t-\t"+str(k_nuc)+"\t"+str(total_windows)
@@ -388,12 +390,12 @@ def main(args):
             k1_mean_mfe = str(round(mean_mfe[k1], 2))
             k1_mean_ed = str(round(mean_ed[k1], 2))
             if int(k) == int(key_i):
-                #print("iNuc is "+str(key_i))
+                #logging.info("iNuc is "+str(key_i))
                 log_total.write(str(k)+"\tNoBP\t"+key_nuc+"\t"+bp_window+"\t"
                     +k1_mean_mfe+"\t"+z_avg+"\t"+k1_mean_ed+"\t"
                     +z_sum+"\t"+str(test)+"\n")
             else:
-                #print("j is "+str(k))
+                #logging.info("j is "+str(k))
                 log_total.write(str(k)+"\t"+key_i+"\t"+key_nuc+"\t"+bp_window+"\t"
                     +k1_mean_mfe+"\t"+z_avg+"\t"+k1_mean_ed+"\t"
                     +z_sum+"\t"+str(test)+"\n")
@@ -414,7 +416,7 @@ def main(args):
         best_coordinate = best_bp_data[1]
 
         #Fill dictionary with coverage normalized z-score
-        #print("Determining best base pair for nucleotide ", k)
+        #logging.info("Determining best base pair for nucleotide ", k)
         best_total_window_mean_bps[k] = (NucPair((nuc_dict[k]).nucleotide,
                                         nuc_dict[k].coordinate, best_nucleotide,
                                         best_coordinate, best_total_window_mean_z,
@@ -428,7 +430,7 @@ def main(args):
     ######## Detect competing partners, and select final i-j pairs #################
     final_partners = {}
     elapsed_time = round((time.time() - start_time), 2)
-    print("Elapsed time: "+str(elapsed_time)+"s")
+    logging.info("Elapsed time: "+str(elapsed_time)+"s")
 
     #print header for fianl partener log file (log_win)
     log_win.write("\ni\tbp(i)\tbp(j)\tavgMFE\tavgZ\tavgED"
@@ -437,117 +439,117 @@ def main(args):
 
     #Iterate through round 1 i-j pairs
     if competition == 1:
-        #print(start_coordinate, end_coordinate)
-        print("Detecting competing pairs...")
+        #logging.info(start_coordinate, end_coordinate)
+        logging.info("Detecting competing pairs...")
         j_coord_list = []
         # for k, v in sorted(best_bps.items()):
-        #     print(jcoordinate)
+        #     logging.info(jcoordinate)
         #     j_coord_list.append(int(v.jcoordinate))
 
         for k, v in sorted(best_bps.items()):
-            #print(k, v.icoordinate, v.jcoordinate)
+            #logging.info(k, v.icoordinate, v.jcoordinate)
             test_k = int(k)
-            #print(sum(test_k == int(v.jcoordinate) for v in best_bps.values()))
+            #logging.info(sum(test_k == int(v.jcoordinate) for v in best_bps.values()))
             if sum(test_k == int(v.jcoordinate) for v in best_bps.values()) >= 0:
-                #print(start_coordinate, end_coordinate)
+                #logging.info(start_coordinate, end_coordinate)
             ### Scan the entire dictionary:
                 #keys = range(int(start_coordinate), int(end_coordinate))
 
             ### Scan two window's length flanking nucleotide:
-                #print(len(best_bps))
-                # print(length*4)
+                #logging.info(len(best_bps))
+                # logging.info(length*4)
                 if (len(best_bps) < length*4):
-                    #print("success")
+                    #logging.info("success")
                     #Length of input less than length of flanks
                     keys = range(int(start_coordinate), int(end_coordinate))
                 elif (
                     (v.icoordinate - length*(2)) >= int(start_coordinate) and
                     (v.icoordinate + (length*2)) <= int(end_coordinate)
                     ):
-                    #print(str(v.icoordinate - length*(2)))
-                    # print("MIDDLE")
+                    #logging.info(str(v.icoordinate - length*(2)))
+                    # logging.info("MIDDLE")
                     keys = range(int(v.icoordinate-(length*2)), int(v.icoordinate+(length*2)))
 
                 elif (
                     int(v.icoordinate + (length*(2))) <= int(end_coordinate)and
                     (v.icoordinate + (length*2)) <= int(end_coordinate)
                 ):
-                    #print("BEGINING"+str(v.icoordinate - (length*(2)))+" "+str(end_coordinate))
+                    #logging.info("BEGINING"+str(v.icoordinate - (length*(2)))+" "+str(end_coordinate))
                     keys = range(int(start_coordinate), int(v.icoordinate+(length*2))+1)
 
                 elif (v.icoordinate + (length*2)) >= int(end_coordinate):
                     if v.icoordinate-(length*2) > 0:
-                        #print("END"+str(v.icoordinate + (length*2)))
+                        #logging.info("END"+str(v.icoordinate + (length*2)))
                         keys = range(int(v.icoordinate-(length*2)), int(end_coordinate))
                     else:
                         keys =range(int(v.icoordinate-(length*2)), int(end_coordinate))
 
                 else:
-                    print("Sub-dictionary error")
+                    logging.info("Sub-dictionary error")
                     raise ValueError("Sub-dictionary error")
 
-                #print(keys)
+                #logging.info(keys)
                 subdict = {k: best_total_window_mean_bps[k] for k in keys}
                 # if k == 216:
                 #     for subk, subv in subdict.items():
-                #         print(subk, subv.icoordinate, subv.jcoordinate)
-                #print("SubDict length for "+str(k)+"="+str(len(subdict)))
+                #         logging.info(subk, subv.icoordinate, subv.jcoordinate)
+                #logging.info("SubDict length for "+str(k)+"="+str(len(subdict)))
 
                 if len(subdict) >= 0:
 
-                    #print("Found competing pair for "+str(k))
+                    #logging.info("Found competing pair for "+str(k))
                     #elapsed_time = round((time.time() - start_time), 2)
-                    #print(elapsed_time)
-                    #print("Detecting competing pairs for nuc ", k)
+                    #logging.info(elapsed_time)
+                    #logging.info("Detecting competing pairs for nuc ", k)
                     #For each i and j in i-j pair, detect competing pairs and append to dict
                     comp_pairs_i = competing_pairs(subdict, v.icoordinate)
-                    #print("i-pairs="+str(len(comp_pairs_i)))
+                    #logging.info("i-pairs="+str(len(comp_pairs_i)))
                     comp_pairs_j = competing_pairs(subdict, v.jcoordinate)
-                    #print("j-pairs="+str(len(comp_pairs_j)))
+                    #logging.info("j-pairs="+str(len(comp_pairs_j)))
                     total_pairs = []
                     #Put pairs competing with i from i-j pair into total pair dict for i-nuc
                     for key, pair in comp_pairs_i.items():
-                        #print("checking competing pairs for i")
+                        #logging.info("checking competing pairs for i")
                         # if k == 216:
-                        #     print(k, pair.icoordinate, pair.jcoordinate, pair.zscore)
+                        #     logging.info(k, pair.icoordinate, pair.jcoordinate, pair.zscore)
                         total_pairs.append(competing_pairs(subdict,
                                                         pair.jcoordinate))
                         total_pairs.append(competing_pairs(subdict,
                                                         pair.icoordinate))
                     #Put pairs competing with j from i-j pair into total pair dict for i-nuc
                     for key, pair in comp_pairs_j.items():
-                        #print("checking competing pairs for j")
+                        #logging.info("checking competing pairs for j")
                         # if k == 216:
-                        #     print(k, pair.icoordinate, pair.jcoordinate, pair.zscore)
+                        #     logging.info(k, pair.icoordinate, pair.jcoordinate, pair.zscore)
                         total_pairs.append(competing_pairs(subdict,
                                                         pair.jcoordinate))
                         total_pairs.append(competing_pairs(subdict,
                                                         pair.icoordinate))
-                    # print(str(k)+"nt Total comp pairs="+str(len(total_pairs)))
+                    # logging.info(str(k)+"nt Total comp pairs="+str(len(total_pairs)))
 
                     #Merge all dictionaries
                     merged_dict = {}
                     i = 0
                     for d in total_pairs:
-                        #print("merging competing dictionaries "+str(i))
+                        #logging.info("merging competing dictionaries "+str(i))
                         for k1, v1 in d.items():
                             # if k == 216:
-                            #     print(k, k1, v1.icoordinate, v1.jcoordinate, v1.zscore)
+                            #     logging.info(k, k1, v1.icoordinate, v1.jcoordinate, v1.zscore)
                             merged_dict[i] = v1
                             i += 1
 
-                    # #print("MergedDict length for "+str(k)+"="+str(len(merged_dict)))
+                    # #logging.info("MergedDict length for "+str(k)+"="+str(len(merged_dict)))
                     # #initiate best_basepair fucntion, return best_bp based on sum
                     # if len(merged_dict) > 2:
                     #     bp = best_basepair(merged_dict, v.inucleotide, v.icoordinate, "sum")
-                    #     #print(str(len(merged_dict))+"__11111")
+                    #     #logging.info(str(len(merged_dict))+"__11111")
                     # else:
-                    #     #print("Nucleotide "+str(k))
+                    #     #logging.info("Nucleotide "+str(k))
                     #     bp = best_basepair(merged_dict, v.inucleotide, v.icoordinate, "sum")
-                    #     #print(str(len(merged_dict))+"____222222")
+                    #     #logging.info(str(len(merged_dict))+"____222222")
                     #     #bp = best_total_window_mean_bps[k]
                     # #Check if best basepair was connected to i-nucleotide (i.e., "k")
-                    # print(len(merged_dict))
+                    # logging.info(len(merged_dict))
                     if len(merged_dict) > 0:
                         bp = best_basepair(merged_dict, v.inucleotide, v.icoordinate, "sum")
                     else:
@@ -558,7 +560,7 @@ def main(args):
                                                     v.ed)
 
                     if (int(k) != bp.icoordinate) and (int(k) != int(bp.jcoordinate)):
-                        # print("1 = "+str(v.icoordinate)+"_"+str(v.jcoordinate)+" AND "+str(bp.icoordinate)+"_"+str(bp.jcoordinate))
+                        # logging.info("1 = "+str(v.icoordinate)+"_"+str(v.jcoordinate)+" AND "+str(bp.icoordinate)+"_"+str(bp.jcoordinate))
                         #if there was a competing i-j pair print it to log file instead:
                         log_win.write("nt-"+str(k)+"*:\t"+str(v.icoordinate)+"\t"+v.jcoordinate+"\t"
                             +str(round(v.mfe, 2))
@@ -572,7 +574,7 @@ def main(args):
                     #
                     # elif ((int(v.icoordinate) == int(v.jcoordinate)) and (int(bp.icoordinate) != int(bp.jcoordinate))):
                     #     #Check for instance where competing base pair
-                    #     print("!!!!!!!2 = "+str(v.icoordinate)+"_"+str(v.jcoordinate)+" AND "+str(bp.icoordinate)+"_"+str(bp.jcoordinate))
+                    #     logging.info("!!!!!!!2 = "+str(v.icoordinate)+"_"+str(v.jcoordinate)+" AND "+str(bp.icoordinate)+"_"+str(bp.jcoordinate))
                     #     log_win.write("nt-"+str(k)+"*:\t"+str(bp.icoordinate)+"\t"+bp.jcoordinate+"\t"
                     #           +str(round(bp.mfe, 2))
                     #           +"\t"+str(round(bp.zscore, 2))
@@ -586,7 +588,7 @@ def main(args):
                     #
                     #
                     else:
-                        #print("3 = "+str(v.icoordinate)+"_"+str(v.jcoordinate)+" AND "+str(bp.icoordinate)+"_"+str(bp.jcoordinate))
+                        #logging.info("3 = "+str(v.icoordinate)+"_"+str(v.jcoordinate)+" AND "+str(bp.icoordinate)+"_"+str(bp.jcoordinate))
                         log_win.write("nt-"+str(k)+":\t"+str(bp.icoordinate)+"\t"+str(bp.jcoordinate)+"\t"
                             + str(round(best_bps[k].mfe, 2))+"\t"
                             + str(round(best_bps[k].zscore, 2))
@@ -605,15 +607,15 @@ def main(args):
                                             best_bps[k].zscore,
                                             best_bps[k].mfe,
                                             best_bps[k].ed)
-                #print("No competing pair found for ", k)
+                #logging.info("No competing pair found for ", k)
                 continue
 
     #Write CT files
     if competition == 1:
-        print("Trying to write CT files with -c option")
+        logging.info("Trying to write CT files with -c option")
         elapsed_time = str(round((time.time() - start_time), 2))+"s"
-        print("Elapsed time: "+elapsed_time)
-        print("Writing CT files")
+        logging.info("Elapsed time: "+elapsed_time)
+        logging.info("Writing CT files")
 
         write_ct(final_partners, str(dbn_file_path1)+".ct", float(10), strand, name, start_coordinate)
         write_ct(final_partners, str(dbn_file_path2)+".ct", float(-1), strand, name, start_coordinate)
@@ -631,19 +633,19 @@ def main(args):
         write_bp(best_bps, outname+".ALL.bp", start_coordinate, name, minz)
 
     write_fasta(nuc_dict, outname+".fa", outname)
-    print("ScanFold-Fold analysis complete! Refresh page to ensure proper loading of IGV")
+    logging.info("ScanFold-Fold analysis complete! Refresh page to ensure proper loading of IGV")
     merge_files(str(dbn_file_path4), str(dbn_file_path1+".dbn"), str(dbn_file_path2+".dbn"), str(dbn_file_path3+".dbn"))
 
     if global_refold == True:
-        print("The global_refold section of code is a work in progress.")
+        logging.info("The global_refold section of code is a work in progress.")
         #create a separate DBN file
         dbn_log_file = open(str(dbn_file_path), "w+")
 
         #try:
         #fold the full fasta input as a fold compound (full_fc) using model params (md)
-        print("Refolding full sequence using ScanFold results as constraints...")
+        logging.info("Refolding full sequence using ScanFold results as constraints...")
         elapsed_time = round((time.time() - start_time), 2)
-        print("Elapsed time: "+str(elapsed_time)+"s")
+        logging.info("Elapsed time: "+str(elapsed_time)+"s")
         md = RNA.md()
         md.temperature = int(temperature)
 
@@ -674,7 +676,7 @@ def main(args):
         merge_files(str(dbn_file_path4), str(dbn_file_path1+".dbn"), str(dbn_file_path2+".dbn"), str(dbn_file_path3+".dbn"))
         dbn_log_file.close()
         # except:
-        #     print("Automatic refold for "+cur_record.name+" failed. Run manually")
+        #     logging.info("Automatic refold for "+cur_record.name+" failed. Run manually")
         #     os.chdir(str(original_directory))
         #     del final_partners
         #     continue
@@ -702,7 +704,7 @@ def main(args):
         # try:
         dbn_file_filter2 = open(dbn_file_path3+".dbn", "r")
         lines = dbn_file_filter2.readlines()
-        #print(lines)
+        #logging.info(lines)
         filter2constraints = str(lines[2])
         full_fasta_sequence = str(lines[1])
 
@@ -720,51 +722,51 @@ def main(args):
     m = 0
     nuc_dict_refold = {}
     while  m < len(structure)-1:
-        #print(m)
+        #logging.info(m)
         if structure[m] == '(':
-            #print(m, structure[m])
+            #logging.info(m, structure[m])
             bond_count += 1
             bond_order.append(bond_count)
             nuc_dict_refold[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
             m += 1
 
         elif structure[m] == ')':
-            # print(m, structure[m])
+            # logging.info(m, structure[m])
             bond_order.append(bond_count)
             bond_count -= 1
             nuc_dict_refold[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
             m += 1
 
         elif str(structure[m]) == ( '.' ):
-            # print(m, structure[m])
+            # logging.info(m, structure[m])
             bond_order.append(0)
             nuc_dict_refold[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
             m += 1
         elif str(structure[m]) == ( '<' ):
-            # print(m, structure[m])
+            # logging.info(m, structure[m])
             bond_order.append(0)
             nuc_dict_refold[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
             m += 1
         elif str(structure[m]) == ( '>' ):
-            # print(m, structure[m])
+            # logging.info(m, structure[m])
             bond_order.append(0)
             nuc_dict_refold[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
             m += 1
         elif str(structure[m]) == ( '{' ):
-            # print(m, structure[m])
+            # logging.info(m, structure[m])
             bond_order.append(0)
             nuc_dict_refold[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
             m += 1
         elif str(structure[m]) == ( '}' ):
-            # print(m, structure[m])
+            # logging.info(m, structure[m])
             bond_order.append(0)
             nuc_dict_refold[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
             m += 1
         else:
-            # print("Error", bond_count, (m+1), sequence[m], structure[m])
+            # logging.info("Error", bond_count, (m+1), sequence[m], structure[m])
             m += 1
             continue
-            # print("no")
+            # logging.info("no")
 
     #Initiate base_pair list
     base_pairs = []
@@ -778,54 +780,54 @@ def main(args):
     structure_end = []
     structure_start = []
     while j < len(structure)-1:
-        #print(nuc_dict[j].structure)
+        #logging.info(nuc_dict[j].structure)
         try:
             if (nuc_dict_refold[j].bond_order == 1) and (nuc_dict_refold[j].structure == '('):
                 structure_count += 1
-                #print(nuc_dict[j].structure)
+                #logging.info(nuc_dict[j].structure)
                 structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
 
             elif (nuc_dict_refold[j].bond_order == 0) and (nuc_dict_refold[j].structure == ')'):
                 structure_count += 1
-                #print(nuc_dict[j].structure)
+                #logging.info(nuc_dict[j].structure)
                 structure_end.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
             elif (nuc_dict_refold[j].bond_order == 1) and (nuc_dict_refold[j].structure == '<'):
                 structure_count += 1
-                #print(nuc_dict[j].structure)
+                #logging.info(nuc_dict[j].structure)
                 structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
 
             elif (nuc_dict_refold[j].bond_order == 0) and (nuc_dict_refold[j].structure == '>'):
                 structure_count += 1
-                #print(nuc_dict[j].structure)
+                #logging.info(nuc_dict[j].structure)
                 structure_end.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
             elif (nuc_dict_refold[j].bond_order == 1) and (nuc_dict_refold[j].structure == '{'):
                 structure_count += 1
-                #print(nuc_dict[j].structure)
+                #logging.info(nuc_dict[j].structure)
                 structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
 
             elif (nuc_dict_refold[j].bond_order == 0) and (nuc_dict_refold[j].structure == '}'):
                 structure_count += 1
-                #print(nuc_dict[j].structure)
+                #logging.info(nuc_dict[j].structure)
                 structure_end.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
             else:
                 j += 1
         except:
-            print(j, "EXCEPT")
+            logging.info(j, "EXCEPT")
             j += 1
             continue
 
     l = 0
     extracted_structure_list = []
-    #print(structure_start)
-    #print(structure_end)
+    #logging.info(structure_start)
+    #logging.info(structure_end)
     while l < int(len(structure_start)):
-        #print(len(structure_start), len(structure_end))
+        #logging.info(len(structure_start), len(structure_end))
         offset = flanking = 0
         s = structure_start_coordinate =  int((structure_start[l].coordinate)-offset)
         e = structure_end_coordinate = int((structure_end[l].coordinate)+offset-1)
@@ -853,7 +855,7 @@ def main(args):
     motif_num = 1
     for es in extracted_structure_list[:]:
     #try:
-        #print(str(i))
+        #logging.info(str(i))
         frag = es.sequence
         fc = RNA.fold_compound(str(frag)) #creates "Fold Compound" object
         fc.hc_add_from_db(str(es.structure))
@@ -865,9 +867,9 @@ def main(args):
         (centroid, distance) = fc.centroid() # calculate and define variables for centroid
         ED = round(fc.mean_bp_distance(), 2) # this caclulates ED based on last calculated partition funciton
         ED_total.append(ED)
-        #print(structure)
+        #logging.info(structure)
         #fmfe = fc.pbacktrack()
-        #print(str(fmfe))
+        #logging.info(str(fmfe))
         seqlist = [] # creates the list we will be filling with sequence fragments
         seqlist.append(frag) # adds the native fragment to list
         scrambled_sequences = scramble(frag, 100, type)
@@ -880,11 +882,11 @@ def main(args):
         zscore_total.append(zscore)
 
         pvalue = round(pvalue_function(energy_list, 100), 2)
-        #print(pvalue)
+        #logging.info(pvalue)
         pvalue_total.append(pvalue)
         accession = str(name)
         ps_title = f"motif_{motif_num} coordinates {es.i} - {es.j}"
-        #print(macro)
+        #logging.info(macro)
 
         with open(f"{name}_motif_{motif_num}.dbn", 'w') as es_dbn:
             es_dbn.write(f">{name}_motif_{motif_num}_coordinates:{es.i}-{es.j}\n{frag}\n{MFE_structure}")
@@ -905,12 +907,12 @@ def main(args):
 
     se.close()
     # except:
-    #     print("Structure Extract failed for "+folder_name+", must extract manually.")
+    #     logging.info("Structure Extract failed for "+folder_name+", must extract manually.")
     #     continue
-    #print("TEST")
+    #logging.info("TEST")
     elapsed_time = round((time.time() - start_time), 2)
-    print("Total runtime: "+str(elapsed_time)+"s")
-    print("ScanFold-Fold analysis complete! Output found in folder named: "+folder_name)
+    logging.info("Total runtime: "+str(elapsed_time)+"s")
+    logging.info("ScanFold-Fold analysis complete! Output found in folder named: "+folder_name)
 
     if args.webserver:
         make_tar(args.webserver, full_output_path)
@@ -933,9 +935,20 @@ if __name__ == "__main__":
                         help='Name of output folder (defaults to header name or date/time)', default=None)
     parser.add_argument('-t', type=int, default=37,
                         help='Folding temperature in celsius; default = 37C')
+    # webserver stuff
+    parser.add_argument('--logfile', default="/dev/stdout", type=str,
+            help='Path to write log file to.')
+    parser.add_argument('--loglevel', default="INFO", type=str,
+            help='Log level.')
     parser.add_argument('--webserver', type=str,
             help='If provided, the output folder is compressed into a tar.gz file and written to the path specified by this parameter')
 
     args = parser.parse_args()
+
+    loglevel = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(loglevel, int):
+        raise ValueError('Invalid log level: %s' % loglevel)
+
+    logging.basicConfig(filename=args.logfile, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', encoding='utf-8', filemode='w', level=loglevel)
 
     main(args)
