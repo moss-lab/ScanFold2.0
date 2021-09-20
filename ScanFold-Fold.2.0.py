@@ -35,7 +35,6 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import logging
 
 def main(args):
-    raise ValueError("qwerty asdf")
     start_time = time.time()
 
     filename = args.filename
