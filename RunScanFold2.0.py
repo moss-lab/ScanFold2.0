@@ -49,4 +49,4 @@ algo = "rnafold"
 type = "mono"
 
 
-os.system('python ScanFold-Scan2.0.py {myfasta} -s {step_size} -w {window_size} -r {randomizations} -t {temperature}')
+os.system('python ScanFoldScan.py {myfasta} -s {step_size} -w {window_size} -r {randomizations} -t {temperature}')
