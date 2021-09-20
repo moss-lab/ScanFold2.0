@@ -64,8 +64,8 @@ def main(args):
             try:
                 logging.info("Putting output in folder named:"+folder_name)
                 full_output_path = os.path.join(cwd, folder_name)
-                os.mkdir(cwd+"/"+folder_name)
-                os.chdir(cwd+"/"+folder_name)
+                os.mkdir(full_output_path)
+                os.chdir(full_output_path)
                 folder_name = str(folder_name)
             except:
                 logging.info(f"WARNING: FOLDER NAME [{folder_name}] IS NOT UNIQUE")
