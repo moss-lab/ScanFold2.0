@@ -12,7 +12,7 @@ WORKDIR /app
 # RUN make install
 # WORKDIR /app
 RUN python3 -m pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip install numpy pandas biopython tensorflow ViennaRNA==2.4.18a1
 #run pip3 install -r requirements.txt
 #CMD python ScanFold-Scan2.0.py
 ENTRYPOINT ["python", "RunScanFold2.0.py"]
