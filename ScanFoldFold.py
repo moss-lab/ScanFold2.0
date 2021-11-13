@@ -58,6 +58,7 @@ def main(args):
     ###create a folder for igv files:
     igv_directory = "extracted_structures"
     parent_directory = str(os.getcwd())
+    print(parent_directory)
     igv_path = os.path.join(parent_directory, "igv_files")
     os.mkdir(igv_path)
 
@@ -931,9 +932,6 @@ def main(args):
 
     if args.webserver:
         make_tar(args.webserver, full_output_path)
-    os.chdir(str(original_directory))
-    del final_partners
-    entry_number += 1
 
 if __name__ == "__main__":
 
