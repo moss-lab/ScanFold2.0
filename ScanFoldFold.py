@@ -31,6 +31,7 @@ import argparse
 from itertools import repeat
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+import shutil
 
 import logging
 
@@ -47,6 +48,26 @@ def main(args):
     algo = "rnafold"
     type = "mono"
     cwd = os.getcwd()
+
+    ###create a folder for extracted_structures:
+    extract_directory = "extracted_structures"
+    parent_directory = str(os.getcwd())
+    extract_path = os.path.join(parent_directory, "extracted_structures")
+    os.mkdir(extract_path)
+
+    ###create a folder for igv files:
+    igv_directory = "extracted_structures"
+    parent_directory = str(os.getcwd())
+    igv_path = os.path.join(parent_directory, "igv_files")
+    os.mkdir(igv_path)
+
+    ###create a folder for inforna_structures:
+    inforna_directory = "inforna_structures"
+    parent_directory = str(os.getcwd())
+    inforna_path = os.path.join(parent_directory, "inforna_structures")
+    os.mkdir(inforna_path)
+
+
 
     ### This sets strand to forward (but can be set up as an argument if needed)
     strand = 1
@@ -450,49 +471,52 @@ def main(args):
             test_k = int(k)
             #logging.info(sum(test_k == int(v.jcoordinate) for v in best_bps.values()))
             if sum(test_k == int(v.jcoordinate) for v in best_bps.values()) >= 0:
-                #logging.info(start_coordinate, end_coordinate)
+                #print(start_coordinate, end_coordinate)
             ### Scan the entire dictionary:
-                #keys = range(int(start_coordinate), int(end_coordinate))
+                # keys = range(int(start_coordinate), int(end_coordinate))
 
             ### Scan two window's length flanking nucleotide:
-                #logging.info(len(best_bps))
-                # logging.info(length*4)
+                #print(len(best_bps))
+                # print(length*4)
+                length = len(nuc_dict)
+                #print(length)
                 if (len(best_bps) < length*4):
-                    #logging.info("success")
+                    #print("Scanning full dictionary")
                     #Length of input less than length of flanks
-                    keys = range(int(start_coordinate), int(end_coordinate))
+                    # keys = range(int(start_coordinate), int(end_coordinate))
+                    subdict = best_total_window_mean_bps
+
                 elif (
                     (v.icoordinate - length*(2)) >= int(start_coordinate) and
                     (v.icoordinate + (length*2)) <= int(end_coordinate)
                     ):
-                    #logging.info(str(v.icoordinate - length*(2)))
-                    # logging.info("MIDDLE")
+                    #print(str(v.icoordinate - length*(2)))
+                    # print("MIDDLE")
                     keys = range(int(v.icoordinate-(length*2)), int(v.icoordinate+(length*2)))
+                    subdict = {k: best_total_window_mean_bps[k] for k in keys}
 
                 elif (
                     int(v.icoordinate + (length*(2))) <= int(end_coordinate)and
                     (v.icoordinate + (length*2)) <= int(end_coordinate)
                 ):
-                    #logging.info("BEGINING"+str(v.icoordinate - (length*(2)))+" "+str(end_coordinate))
+                    #print("BEGINING"+str(v.icoordinate - (length*(2)))+" "+str(end_coordinate))
                     keys = range(int(start_coordinate), int(v.icoordinate+(length*2))+1)
+                    subdict = {k: best_total_window_mean_bps[k] for k in keys}
 
                 elif (v.icoordinate + (length*2)) >= int(end_coordinate):
                     if v.icoordinate-(length*2) > 0:
-                        #logging.info("END"+str(v.icoordinate + (length*2)))
+                        #print("END"+str(v.icoordinate + (length*2)))
                         keys = range(int(v.icoordinate-(length*2)), int(end_coordinate))
                     else:
                         keys =range(int(v.icoordinate-(length*2)), int(end_coordinate))
+                        subdict = {k: best_total_window_mean_bps[k] for k in keys}
+
+                elif len(best_bps) < length:
+                        subdict = best_total_window_mean_bps
 
                 else:
-                    logging.info("Sub-dictionary error")
+                    print("Sub-dictionary error")
                     raise ValueError("Sub-dictionary error")
-
-                #logging.info(keys)
-                subdict = {k: best_total_window_mean_bps[k] for k in keys}
-                # if k == 216:
-                #     for subk, subv in subdict.items():
-                #         logging.info(subk, subv.icoordinate, subv.jcoordinate)
-                #logging.info("SubDict length for "+str(k)+"="+str(len(subdict)))
 
                 if len(subdict) >= 0:
 
@@ -625,11 +649,11 @@ def main(args):
         makedbn(dbn_file_path1, "NoFilter")
         makedbn(dbn_file_path2, "Zavg_-1")
         makedbn(dbn_file_path3, "Zavg_-2")
-        write_bp(final_partners, outname+".bp", start_coordinate, name, minz)
-        write_wig_dict(final_partners, outname+".zavgs.wig", name, step_size, str("zscore"))
-        write_wig_dict(final_partners, outname+".mfe_avgs.wig", name, step_size, str("mfe"))
-        write_wig_dict(final_partners, outname+".ed_avgs.wig", name, step_size, str("ed"))
-        write_bp(best_bps, outname+".ALL.bp", start_coordinate, name, minz)
+        write_bp(final_partners, igv_path+"/"+outname+".bp", start_coordinate, name, minz)
+        write_wig_dict(final_partners, igv_path+"/"+outname+".zavgs.wig", name, step_size, str("zscore"))
+        write_wig_dict(final_partners, igv_path+"/"+outname+".mfe_avgs.wig", name, step_size, str("mfe"))
+        write_wig_dict(final_partners, igv_path+"/"+outname+".ed_avgs.wig", name, step_size, str("ed"))
+        write_bp(best_bps, igv_path+"/"+outname+".ALL.bp", start_coordinate, name, minz)
 
     write_fasta(nuc_dict, outname+".fa", outname)
     logging.info("ScanFold-Fold analysis complete! Refresh page to ensure proper loading of IGV")
@@ -686,7 +710,7 @@ def main(args):
     #############
     #Begin the structure extract process
     #Set flanking nucleotides to be folded
-    flanking = 4
+    flanking = 0
 
     #Set number of randomizations and shuffle type ("mono" or "di")
     sub_randomizations = 100
@@ -699,23 +723,26 @@ def main(args):
 
     #Read the structure of -2 filter2constraints
     if global_refold == False:
-        #refold from -2 constraints
-        # try:
-        dbn_file_filter2 = open(dbn_file_path3+".dbn", "r")
-        lines = dbn_file_filter2.readlines()
-        #logging.info(lines)
-        filter2constraints = str(lines[2])
-        full_fasta_sequence = str(lines[1])
+        # Refold from -1 constraints
+        if args.extract == 1:
+            dbn_file_filter1 = open(dbn_file_path2+".dbn", "r")
+            lines = dbn_file_filter1.readlines()
+            full_fasta_sequence = str(lines[1])
+            filter_constraints = str(lines[2])
+        if args.extract == 2:
+            dbn_file_filter2 = open(dbn_file_path3+".dbn", "r")
+            lines = dbn_file_filter2.readlines()
+            full_fasta_sequence = str(lines[1])
+            filter_constraints = str(lines[2])
 
-    dbn_file_filter2 = open(dbn_file_path3+".dbn", "r")
-    lines = dbn_file_filter2.readlines()
-    filter2structure = str(lines[2])
-    full_fasta_sequence = str(lines[1])
-    sequence = list(full_fasta_sequence)
-    structure = list(filter2structure)
-    length = len(full_fasta_sequence)
+    structure_raw = filter_constraints
+    sequence = list(str(full_fasta_sequence))
+    structure = list(structure_raw)
+    length = len(sequence)
     length_st = len(structure)
 
+    if length != length_st:
+        raise("Length of sequence and structure do not match")
 
     #Iterate through sequence to assign nucleotides to structure type
     m = 0
@@ -853,8 +880,6 @@ def main(args):
     #se.write("ScanFold predicted structures which contain at least one base pair with Zavg < -1 have been extracted from "+str(name)+" results (sequence length "+str(length)+"nt) and have been refolded using RNAfold to determine their individual MFE, structure, z-score (using 100X randomizations), and ensemble diversity score.\n")
     motif_num = 1
     for es in extracted_structure_list[:]:
-    #try:
-        #logging.info(str(i))
         frag = es.sequence
         fc = RNA.fold_compound(str(frag)) #creates "Fold Compound" object
         fc.hc_add_from_db(str(es.structure))
@@ -866,9 +891,6 @@ def main(args):
         (centroid, distance) = fc.centroid() # calculate and define variables for centroid
         ED = round(fc.mean_bp_distance(), 2) # this caclulates ED based on last calculated partition funciton
         ED_total.append(ED)
-        #logging.info(structure)
-        #fmfe = fc.pbacktrack()
-        #logging.info(str(fmfe))
         seqlist = [] # creates the list we will be filling with sequence fragments
         seqlist.append(frag) # adds the native fragment to list
         scrambled_sequences = scramble(frag, 100, type)
@@ -879,27 +901,20 @@ def main(args):
         except:
             zscore = zscore_function(energy_list, 100)
         zscore_total.append(zscore)
-
         pvalue = round(pvalue_function(energy_list, 100), 2)
-        #logging.info(pvalue)
         pvalue_total.append(pvalue)
         accession = str(name)
         ps_title = f"motif_{motif_num} coordinates {es.i} - {es.j}"
-        #logging.info(macro)
+        es_path = f"{extract_path}/{name}_motif_{motif_num}.dbn"
+        with open(es_path, 'w') as es_dbn:
+            es_dbn.write(f">{name}_motif_{motif_num}_coordinates:{es.i}-{es.j}_zscore={zscore}\n{frag}\n{MFE_structure}")
+        dbn2ct(es_path)
+        os.rename(f"{extract_path}/{name}_motif_{motif_num}.ct", f"{inforna_path}/{name}_motif_{motif_num}.ct")
 
-        with open(f"{name}_motif_{motif_num}.dbn", 'w') as es_dbn:
-            es_dbn.write(f">{name}_motif_{motif_num}_coordinates:{es.i}-{es.j}\n{frag}\n{MFE_structure}")
-        dbn2ct(f"{name}_motif_{motif_num}.dbn")
-        ###Create figure using forgi
-        # with open('tmp.fa', 'w') as file:
-        #     file.write('>tmp\n%s\n%s' % (frag, MFE_structure))
-        # cg = forgi.load_rna("tmp.fa", allow_many=False)
-        # fvm.plot_rna(cg, text_kwargs={"fontweight":"black"}, lighten=0.7, backbone_kwargs={"linewidth":3})
-        # plt.savefig(ps_title+".png")
-        # plt.clf()
+        # Create postcript files
+        RNA.PS_rna_plot_a(frag, MFE_structure, extract_path+"/motif_"+str(motif_num)+".ps", '', '')
 
-
-        RNA.PS_rna_plot_a(frag, MFE_structure, "motif_"+str(motif_num)+".ps", '', '')
+        # Set extracted structures up as GFF format
         gff_attributes = f'motif_{motif_num};sequence={es.sequence};structure={str(es.structure)};refoldedMFE={str(MFE_structure)};MFE(kcal/mol)={str(MFE)};z-score={str(zscore)};ED={str(ED)}'
         se.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (str(accession), str("."), str("RNA_sequence_secondary_structure"), str(int((es.i)+1)), str(int((es.j)+1)), str("."), str("."), str("."), gff_attributes))
         motif_num += 1
@@ -909,12 +924,16 @@ def main(args):
     #     logging.info("Structure Extract failed for "+folder_name+", must extract manually.")
     #     continue
     #logging.info("TEST")
+    shutil.make_archive(inforna_path, 'zip', inforna_path)
     elapsed_time = round((time.time() - start_time), 2)
     logging.info("Total runtime: "+str(elapsed_time)+"s")
     logging.info("ScanFold-Fold analysis complete! Output found in folder named: "+folder_name)
 
     if args.webserver:
         make_tar(args.webserver, full_output_path)
+    os.chdir(str(original_directory))
+    del final_partners
+    entry_number += 1
 
 if __name__ == "__main__":
 
@@ -934,6 +953,9 @@ if __name__ == "__main__":
                         help='Name of output folder (defaults to header name or date/time)', default=None)
     parser.add_argument('-t', type=int, default=37,
                         help='Folding temperature in celsius; default = 37C')
+    parser.add_argument('--extract', type=int, default='2',
+                        help='Extract structures from minus 1 or minus 2 dbn file (2 or 1); Default = 2')
+
     # webserver stuff
     parser.add_argument('--logfile', default=sys.stdout, type=argparse.FileType('w', encoding='UTF-8'),
             help='Path to write log file to.')
