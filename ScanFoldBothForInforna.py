@@ -59,8 +59,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # set up logging
-    sys.stdout = open(args.filename+".console.log", 'w')
-
     loglevel = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(loglevel, int):
         raise ValueError('Invalid log level: %s' % loglevel)
