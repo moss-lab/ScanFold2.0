@@ -59,10 +59,10 @@ def main(args):
         except:
             logging.info("Input name should have .tsv extension")
             outname = filename
-            
+
         # handle case of input file being an absolute path
         outname = os.path.basename(outname)
-        
+
         if folder_name != None:
             try:
                 logging.info("Putting output in folder named:"+folder_name)
@@ -651,13 +651,13 @@ def main(args):
         if args.bp_track is not None:
             write_bp(best_bps, args.bp_track, start_coordinate, name, minz)
 
-    write_fasta(nuc_dict, outname+".fa", outname)
+    write_fasta(nuc_dict, outname+".fa", name)
     if args.fasta_file_path is not None:
-        write_fasta(nuc_dict, args.fasta_file_path, outname)
+        write_fasta(nuc_dict, args.fasta_file_path, name)
 
-    write_fai(nuc_dict, outname+".fai", outname)
+    write_fai(nuc_dict, outname+".fai", name)
     if args.fasta_index is not None:
-        write_fai(nuc_dict, args.fasta_index, outname)
+        write_fai(nuc_dict, args.fasta_index, name)
 
     logging.info("ScanFold-Fold analysis complete! Refresh page to ensure proper loading of IGV")
     merge_files(str(dbn_file_path4), str(dbn_file_path1+".dbn"), str(dbn_file_path2+".dbn"), str(dbn_file_path3+".dbn"))
