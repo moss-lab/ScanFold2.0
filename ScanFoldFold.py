@@ -634,8 +634,8 @@ def main(args):
             write_bp(final_partners, args.bp_track, start_coordinate, name, minz)
 
         write_wig_dict(final_partners, outname+".zavgs.wig", name, step_size, str("zscore"))
-        if args.zscore_wig_file_path is not None:
-            write_wig_dict(final_partners, args.zscore_wig_file_path, name, step_size, str("zscore"))
+        if args.final_partners_wig is not None:
+            write_wig_dict(final_partners, args.final_partners_wig, name, step_size, str("zscore"))
 
         write_wig_dict(final_partners, outname+".mfe_avgs.wig", name, step_size, str("mfe"))
         if args.mfe_wig_file_path is not None:
