@@ -59,7 +59,10 @@ def main(args):
         except:
             logging.info("Input name should have .tsv extension")
             outname = filename
-
+            
+        # handle case of input file being an absolute path
+        outname = os.path.basename(outname)
+        
         if folder_name != None:
             try:
                 logging.info("Putting output in folder named:"+folder_name)
@@ -88,8 +91,8 @@ def main(args):
         step_size = steplines2  - steplines1
 
         #Initialize bp dictionary and z-score lists
-        log_total = open(filename+".ScanFold.log", 'w')
-        log_win = open(filename+".ScanFold.FinalPartners.txt", 'w')
+        log_total = open(outname+".ScanFold.log", 'w')
+        log_win = open(outname+".ScanFold.FinalPartners.txt", 'w')
 
         ### Reset file names ###
         dbn_file_path = outname+".AllDBN_refold.txt"
