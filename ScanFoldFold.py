@@ -653,11 +653,11 @@ def main(args):
 
     write_fasta(nuc_dict, outname+".fa", outname)
     if args.fasta_file_path is not None:
-        shutil.copyfile(outname+".fa", args.fasta_file_path)
+        write_fasta(nuc_dict, args.fasta_file_path, outname)
 
     write_fai(nuc_dict, outname+".fai", outname)
     if args.fasta_index is not None:
-        shutil.copyfile(outname+".fai", args.fasta_index)
+        write_fai(nuc_dict, args.fasta_index, outname)
 
     logging.info("ScanFold-Fold analysis complete! Refresh page to ensure proper loading of IGV")
     merge_files(str(dbn_file_path4), str(dbn_file_path1+".dbn"), str(dbn_file_path2+".dbn"), str(dbn_file_path3+".dbn"))
