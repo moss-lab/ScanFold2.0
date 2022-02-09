@@ -628,13 +628,37 @@ def main(args):
         makedbn(dbn_file_path1, "NoFilter")
         makedbn(dbn_file_path2, "Zavg_-1")
         makedbn(dbn_file_path3, "Zavg_-2")
+
         write_bp(final_partners, outname+".bp", start_coordinate, name, minz)
+        if args.bp_track is not None:
+            write_bp(final_partners, args.bp_track, start_coordinate, name, minz)
+
         write_wig_dict(final_partners, outname+".zavgs.wig", name, step_size, str("zscore"))
+        if args.zscore_wig_file_path is not None:
+            write_wig_dict(final_partners, args.zscore_wig_file_path, name, step_size, str("zscore"))
+
         write_wig_dict(final_partners, outname+".mfe_avgs.wig", name, step_size, str("mfe"))
+        if args.mfe_wig_file_path is not None:
+            write_wig_dict(final_partners, args.mfe_wig_file_path, name, step_size, str("mfe"))
+
         write_wig_dict(final_partners, outname+".ed_avgs.wig", name, step_size, str("ed"))
+        if args.ed_wig_file_path is not None:
+            write_wig_dict(final_partners, args.ed_wig_file_path, name, step_size, str("ed"))
+
         write_bp(best_bps, outname+".ALL.bp", start_coordinate, name, minz)
 
+    if competition == 0:
+        if args.bp_track is not None:
+            write_bp(best_bps, args.bp_track, start_coordinate, name, minz)
+
     write_fasta(nuc_dict, outname+".fa", outname)
+    if args.fasta_file_path is not None:
+        shutil.copyfile(outname+".fa", args.fasta_file_path)
+
+    write_fai(nuc_dict, outname+".fai", outname)
+    if args.fasta_index is not None:
+        shutil.copyfile(outname+".fai", args.fasta_index)
+
     logging.info("ScanFold-Fold analysis complete! Refresh page to ensure proper loading of IGV")
     merge_files(str(dbn_file_path4), str(dbn_file_path1+".dbn"), str(dbn_file_path2+".dbn"), str(dbn_file_path3+".dbn"))
 
@@ -944,6 +968,22 @@ if __name__ == "__main__":
             help='Log level.')
     parser.add_argument('--webserver', type=str,
             help='If provided, the output folder is compressed into a tar.gz file and written to the path specified by this parameter')
+    parser.add_argument('--fasta_file_path', type=str,
+                        help='fasta_file path')
+    parser.add_argument('--fasta_index', type=str,
+                        help='fasta index file path')
+    parser.add_argument('--bp_track', type=str,
+                        help='bp_track_file path')
+    parser.add_argument('--ed_wig_file_path', type=str,
+                        help='ed_wig_file_path')
+    parser.add_argument('--mfe_wig_file_path', type=str,
+                        help='mfe_wig_file_path')
+    parser.add_argument('--pvalue_wig_file_path', type=str,
+                        help='pvalue_wig_file_path')
+    parser.add_argument('--zscore_wig_file_path', type=str,
+                        help='zscore_wig_file_path')
+    parser.add_argument('--final_partners_wig', type=str,
+                        help='final partners wig file path')
 
     args = parser.parse_args()
 

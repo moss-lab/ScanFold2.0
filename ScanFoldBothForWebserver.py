@@ -34,6 +34,22 @@ if __name__ == "__main__":
                         help='Global refold option. Refold full sequence using Zavg <-1 and <-2 base pairs')
     parser.add_argument('--folder_name',  type=str,
                         help='Name of output folder (defaults to header name or date/time)', default=None)
+    parser.add_argument('--fasta_file_path', type=str,
+                        help='fasta_file path')
+    parser.add_argument('--fasta_index', type=str,
+                        help='fasta index file path')
+    parser.add_argument('--bp_track', type=str,
+                        help='bp_track_file path')
+    parser.add_argument('--ed_wig_file_path', type=str,
+                        help='ed_wig_file_path')
+    parser.add_argument('--mfe_wig_file_path', type=str,
+                        help='mfe_wig_file_path')
+    parser.add_argument('--pvalue_wig_file_path', type=str,
+                        help='pvalue_wig_file_path')
+    parser.add_argument('--zscore_wig_file_path', type=str,
+                        help='zscore_wig_file_path')
+    parser.add_argument('--final_partners_wig', type=str,
+                        help='final partners wig file path')
 
     # shared arguments
     parser.add_argument('-t', type=int, default=37,
@@ -46,6 +62,7 @@ if __name__ == "__main__":
             help='Log level.')
     parser.add_argument('--webserver', type=str,
             help='If provided, the output folder is compressed into a tar.gz file and written to the path specified by this parameter')
+
 
     ### Parse arguments and convert to variables
     args = parser.parse_args()
