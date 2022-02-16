@@ -795,6 +795,60 @@ def main(args):
             continue
             # logging.info("no")
 
+        """ Repeat the process looking for non-nested "<..>" pairs """
+        #Inititate base pair tabulation variables
+        bond_order_pk = []
+        bond_count_pk = 0
+        nuc_dict_pk = {}
+        #Iterate through sequence to assign nucleotides to structure type
+        m = 0
+        while  m < length-1:
+            #print(m)
+            if structure[m] == '<':
+                #print(m, structure[m])
+                bond_count_pk += 1
+                bond_order_pk.append(bond_count_pk)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+
+            elif structure[m] == '>':
+            #    print(m, structure[m])
+                bond_order_pk.append(bond_count_pk)
+                bond_count_pk -= 1
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+
+            elif str(structure[m]) == ( '.' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '(' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( ')' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '{' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '}' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            else:
+                #print("Error", bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+                continue
+
+
     #Initiate base_pair list
     base_pairs = []
 
@@ -811,44 +865,49 @@ def main(args):
         try:
             if (nuc_dict_refold[j].bond_order == 1) and (nuc_dict_refold[j].structure == '('):
                 structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
+                #print(nuc_dict[j].structure, j)
+                structure_start.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
 
             elif (nuc_dict_refold[j].bond_order == 0) and (nuc_dict_refold[j].structure == ')'):
                 structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_end.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
-                j += 1
-            elif (nuc_dict_refold[j].bond_order == 1) and (nuc_dict_refold[j].structure == '<'):
-                structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
-                j += 1
-
-            elif (nuc_dict_refold[j].bond_order == 0) and (nuc_dict_refold[j].structure == '>'):
-                structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_end.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
-                j += 1
-            elif (nuc_dict_refold[j].bond_order == 1) and (nuc_dict_refold[j].structure == '{'):
-                structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
-                j += 1
-
-            elif (nuc_dict_refold[j].bond_order == 0) and (nuc_dict_refold[j].structure == '}'):
-                structure_count += 1
-                #logging.info(nuc_dict[j].structure)
+                #print(nuc_dict[j].structure, j)
                 structure_end.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
             else:
                 j += 1
         except:
-            logging.info(j, "EXCEPT")
             j += 1
             continue
 
+    """ Repeat for non-nested """
+    j = 0
+    structure_count_pk = 0
+    structure_end_pk = []
+    structure_start_pk = []
+
+    while j < length:
+        #print(f"{j} non-nested")
+        try:
+            if (nuc_dict_pk[j].bond_order == 1) and (nuc_dict_pk[j].structure == '<'):
+                structure_count_pk += 1
+                #print(nuc_dict_pk[j].structure)
+                structure_start_pk.append(NucStructure(structure_count_pk, nuc_dict_pk[j].coordinate, nuc_dict_pk[j].nucleotide, nuc_dict_pk[j].structure))
+                j += 1
+
+            elif (nuc_dict_pk[j].bond_order == 0) and (nuc_dict_pk[j].structure == '>'):
+                structure_count_pk += 1
+                #print(nuc_dict_pk[j].structure)
+                structure_end_pk.append(NucStructure(structure_count, nuc_dict_pk[j].coordinate, nuc_dict_pk[j].nucleotide, nuc_dict_pk[j].structure))
+                j += 1
+            else:
+                j += 1
+        except:
+            #print("Here")
+            j += 1
+            continue
+
+    """Add to extracted structure list"""
     l = 0
     extracted_structure_list = []
     #logging.info(structure_start)
@@ -869,6 +928,23 @@ def main(args):
         extracted_structure_list.append(ExtractedStructure(l, seq, se_fold, s, e))
         l += 1
 
+    """ Repeat for non-nested """
+    l = 0
+    while l < int(len(structure_start_pk)):
+        offset = flanking
+        s = structure_start_coordinate =  int((structure_start_pk[l].coordinate)-offset-1)
+        e = structure_end_coordinate = int((structure_end_pk[l].coordinate)+offset-1)
+
+        seq = ""
+        fold = ""
+        for k, v in nuc_dict_pk.items():
+            if s <= k <= e:
+                seq += str(v.nucleotide)
+                fold += str(v.structure)
+
+        extracted_structure_list.append(ExtractedStructure(l, seq, fold, s, e))
+
+        l += 1
 
     zscore_total = []
     numerical_z = []
