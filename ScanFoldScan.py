@@ -71,7 +71,7 @@ def main(args):
             cur_record_length = len(cur_record.seq)
             seq = cur_record.seq
             seq = seq.transcribe()
-
+            seq = seq.upper()
             ### Create a nucleotide dictionary
             nuc_dict = {}
             nuc_i = 1
@@ -173,4 +173,3 @@ if __name__ == "__main__":
 
         # still raise exception
         raise
-
