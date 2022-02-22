@@ -48,24 +48,27 @@ def main(args):
     algo = "rnafold"
     type = "mono"
     cwd = os.getcwd()
+    es_path = args.es_path
+    igv_path = args.igv_path
+    inforna_path = args.inforna_path
 
     ###create a folder for extracted_structures:
-    extract_directory = "extracted_structures"
+    # extract_directory = "extracted_structures"
     parent_directory = str(os.getcwd())
-    extract_path = os.path.join(parent_directory, "extracted_structures")
+    extract_path = os.path.join(parent_directory, es_path)
     os.mkdir(extract_path)
 
     ###create a folder for igv files:
-    igv_directory = "extracted_structures"
+    # igv_directory = "igv_files"
     parent_directory = str(os.getcwd())
-    print(parent_directory)
-    igv_path = os.path.join(parent_directory, "igv_files")
+    #print(parent_directory)
+    igv_path = os.path.join(parent_directory, igv_path)
     os.mkdir(igv_path)
 
     ###create a folder for inforna_structures:
-    inforna_directory = "inforna_structures"
+    # inforna_directory = "inforna_structures"
     parent_directory = str(os.getcwd())
-    inforna_path = os.path.join(parent_directory, "inforna_structures")
+    inforna_path = os.path.join(parent_directory, inforna_path)
     os.mkdir(inforna_path)
 
 
@@ -1029,6 +1032,13 @@ if __name__ == "__main__":
                         help='Folding temperature in celsius; default = 37C')
     parser.add_argument('--extract', type=int, default='2',
                         help='Extract structures from minus 1 or minus 2 dbn file (2 or 1); Default = 2')
+    parser.add_argument('--es_path', type=str, default = "extracted_structures",
+                        help='')
+    parser.add_argument('--igv_path', type=str, default = "igv_files",
+                        help='')
+    parser.add_argument('--inforna_path', type=str, default = "inforna_structures",
+                        help='')
+
 
     # webserver stuff
     parser.add_argument('--logfile', default=sys.stdout, type=argparse.FileType('w', encoding='UTF-8'),
