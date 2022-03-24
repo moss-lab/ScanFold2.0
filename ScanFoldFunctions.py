@@ -152,7 +152,6 @@ def multiprocessing(func, args,
         res = ex.map(func, args)
     return list(res)
 
-
 #### Defining Dinucleotide function #####
 # Taken from
 # altschulEriksonDinuclShuffle.py
@@ -836,11 +835,13 @@ def randomizer(frag):
 def energies(seq_list, temperature, algo):
     energy_list = []
 
-    energy_list = multiprocessing(rna_folder, [(sequence, temperature, algo) for sequence in seq_list], 12)
-    # for sequence in seq_list:
-    #     #fc = RNA.fold_compound(str(sequence))
-    #     (structure, MFE) = RNA.fold(str(sequence)) # calculate and define variables for mfe and structure
-    #     energy_list.append(MFE) # adds the native fragment to list
+    try:
+        energy_list = multiprocessing(rna_folder, [(sequence, temperature, algo) for sequence in seq_list], 12)
+    except:
+        for sequence in seq_list:
+            #fc = RNA.fold_compound(str(sequence))
+            (structure, MFE) = RNA.fold(str(sequence)) # calculate and define variables for mfe and structure
+            energy_list.append(MFE) # adds the native fragment to list
 
     return energy_list;
 
@@ -871,11 +872,12 @@ def scramble(text, randomizations, type):
             result = dinuclShuffle(frag)
             frag_seqs.append(result)
     elif type == "mono":
-        frag_seqs = multiprocessing(randomizer, [frag for i in range(randomizations)], 12)
-
-        # for _ in range(int(randomizations)):
-        #     result = ''.join(random.sample(frag,len(frag)))
-        #     frag_seqs.append(result)
+        try:
+            frag_seqs = multiprocessing(randomizer, [frag for i in range(randomizations)], 12)
+        except:
+            for _ in range(int(randomizations)):
+                result = ''.join(random.sample(frag,len(frag)))
+                frag_seqs.append(result)
     else:
         print("Shuffle type not properly designated; please input \"di\" or \"mono\"")
 
