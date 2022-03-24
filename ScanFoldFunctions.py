@@ -1117,7 +1117,7 @@ def get_di_freqs(frag):
     frag = str(frag)
     frag_list = [frag[i:i+2] for i in range(0, len(frag))]
     dinucleotides = ['AA','AU','AG','AC',
-                     'TA','UU','UG','UC',
+                     'UA','UU','UG','UC',
                      'GA','GU','GG','GC',
                      'CA','CU','CG','CC']
     all_counts = []
@@ -1420,6 +1420,335 @@ def random_with_N_digits(n):
     range_start = 10**(n-1)
     range_end = (10**n)-1
     return randint(range_start, range_end)
+
+def structure_extract(args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-r', type=int, default=100,
+                        help='randomizations for z-score calculation')
+    parser.add_argument('-f', type=int, default=0,
+                        help='number of flanking nucleotides')
+    parser.add_argument('--type', type=str, default='mono',
+                        help='Randomization type')
+    parser.add_argument('--filename',  type=str, default='Zavg_-2_pairs.dbn',
+                        help='input filename')
+    parser.add_argument('--structure_extract_file', type=str, default = "ExtractedStructures.gff3",
+                        help='structure_extract_file path')
+    parser.add_argument('-t', type=int, default=37,
+                        help='Folding temperature in celsius; default = 37C')
+    parser.add_argument('--algo', type=str, default='rnafold',
+                        help='Select RNA folding algorithm')
+    parser.add_argument('--name', type=str,
+                        help='Name or ID of sequence being analyzed. Default "UserInput"')
+    args = parser.parse_args()
+    filename = args.filename
+    randomizations = int(args.r)
+    temperature = int(args.t)
+    flanking = int(args.f)
+    structure_extract_file = args.structure_extract_file
+    algo = str(args.algo)
+    type = str(args.type)
+    name = args.name
+
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+        header = lines[0]
+        split_header = header.split('\t')
+        #print(split_header[10])
+        accesion = filename
+        #print (accesion)
+        fname_list = accesion.split('/')
+        fname_part = fname_list[len(fname_list) -1]
+        #print(fname_part)
+        fname = f'ExtrStr_{fname_part}.txt'
+        MAIN = os.path.join(root, fname)
+
+        se = open(fname, 'w')
+        se.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % ("StructureNumber", "i", "j", "sequence", "ScanFoldPairs", "RefoldedStructure", "RefoldedMFE", "Refoldedz-score", "RefoldedED"))
+
+        #print(title)
+        sequence_raw = str(lines[1])
+        #print(sequence_raw)
+        structure_raw = str(lines[2])
+        #print(structure_raw)
+
+
+        bp_dict = {}
+
+        sequence = list(sequence_raw)
+        structure = list(structure_raw)
+
+        length = len(sequence)
+        length_st = len(structure)
+        #print(length, length_st)
+
+        #Inititate base pair tabulation variables
+        bond_order = []
+        bond_count = 0
+        nuc_dict = {}
+        #Iterate through sequence to assign nucleotides to structure type
+        m = 0
+        #print(length)
+        while  m < length-1:
+            #print(m)
+            if structure[m] == '(':
+                #print(m, structure[m])
+                bond_count += 1
+                bond_order.append(bond_count)
+                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
+                m += 1
+
+            elif structure[m] == ')':
+            #    print(m, structure[m])
+                bond_order.append(bond_count)
+                bond_count -= 1
+                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
+                m += 1
+
+            elif str(structure[m]) == ( '.' ):
+            #    print(m, structure[m])
+                bond_order.append(0)
+                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '<' ):
+            #    print(m, structure[m])
+                bond_order.append(0)
+                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '>' ):
+            #    print(m, structure[m])
+                bond_order.append(0)
+                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '{' ):
+            #    print(m, structure[m])
+                bond_order.append(0)
+                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '}' ):
+            #    print(m, structure[m])
+                bond_order.append(0)
+                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
+                m += 1
+            else:
+                #print("Error", bond_count, (m+1), sequence[m], structure[m])
+                m += 1
+                continue
+                # print("no")
+        """ Repeat the process looking for non-nested "<..>" pairs """
+        #Inititate base pair tabulation variables
+        bond_order_pk = []
+        bond_count_pk = 0
+        nuc_dict_pk = {}
+        #Iterate through sequence to assign nucleotides to structure type
+        m = 0
+        while  m < length-1:
+            #print(m)
+            if structure[m] == '<':
+                #print(m, structure[m])
+                bond_count_pk += 1
+                bond_order_pk.append(bond_count_pk)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+
+            elif structure[m] == '>':
+            #    print(m, structure[m])
+                bond_order_pk.append(bond_count_pk)
+                bond_count_pk -= 1
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+
+            elif str(structure[m]) == ( '.' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '(' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( ')' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '{' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '}' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            else:
+                #print("Error", bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+                continue
+
+        #print(bond_order)
+        #Initiate base_pair list
+        base_pairs = []
+
+        #Create empty variable named test
+        test = ""
+
+        #Iterate through bond order
+        j = 0
+        structure_count = 0
+        structure_end = []
+        structure_start = []
+        while j < length:
+            #print(f"{j} nested")
+            try:
+                if (nuc_dict[j].bond_order == 1) and (nuc_dict[j].structure == '('):
+                    structure_count += 1
+                    #print(nuc_dict[j].structure, j)
+                    structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict[j].nucleotide, nuc_dict[j].structure))
+                    j += 1
+
+                elif (nuc_dict[j].bond_order == 0) and (nuc_dict[j].structure == ')'):
+                    structure_count += 1
+                    #print(nuc_dict[j].structure, j)
+                    structure_end.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict[j].nucleotide, nuc_dict[j].structure))
+                    j += 1
+                else:
+                    j += 1
+            except:
+                j += 1
+                continue
+
+
+        j = 0
+        structure_count_pk = 0
+        structure_end_pk = []
+        structure_start_pk = []
+
+        while j < length:
+            #print(f"{j} non-nested")
+            try:
+                if (nuc_dict_pk[j].bond_order == 1) and (nuc_dict_pk[j].structure == '<'):
+                    structure_count_pk += 1
+                    #print(nuc_dict_pk[j].structure)
+                    structure_start_pk.append(NucStructure(structure_count_pk, nuc_dict_pk[j].coordinate, nuc_dict_pk[j].nucleotide, nuc_dict_pk[j].structure))
+                    j += 1
+
+                elif (nuc_dict_pk[j].bond_order == 0) and (nuc_dict_pk[j].structure == '>'):
+                    structure_count_pk += 1
+                    #print(nuc_dict_pk[j].structure)
+                    structure_end_pk.append(NucStructure(structure_count, nuc_dict_pk[j].coordinate, nuc_dict_pk[j].nucleotide, nuc_dict_pk[j].structure))
+                    j += 1
+                else:
+                    j += 1
+            except:
+                #print("Here")
+                j += 1
+                continue
+
+        #print(structure_start[0].coordinate, structure_end[0].coordinate)
+
+        extracted_structure_list = []
+
+
+        l = 0
+        while l < int(len(structure_start)):
+            offset = flanking
+            s = structure_start_coordinate =  int((structure_start[l].coordinate)-offset-1)
+            e = structure_end_coordinate = int((structure_end[l].coordinate)+offset-1)
+
+            seq = ""
+            fold = ""
+            for k, v in nuc_dict.items():
+                if s <= k <= e:
+                    seq += str(v.nucleotide)
+                    fold += str(v.structure)
+
+            extracted_structure_list.append(ExtractedStructure(l, seq, fold, s, e))
+
+            l += 1
+
+        l = 0
+        while l < int(len(structure_start_pk)):
+            offset = flanking
+            s = structure_start_coordinate =  int((structure_start_pk[l].coordinate)-offset-1)
+            e = structure_end_coordinate = int((structure_end_pk[l].coordinate)+offset-1)
+
+            seq = ""
+            fold = ""
+            for k, v in nuc_dict_pk.items():
+                if s <= k <= e:
+                    seq += str(v.nucleotide)
+                    fold += str(v.structure)
+
+            extracted_structure_list.append(ExtractedStructure(l, seq, fold, s, e))
+
+            l += 1
+
+        zscore_total = []
+        numerical_z = []
+        pvalue_total = []
+        numerical_p = []
+        MFE_total = []
+        ED_total = []
+
+
+        se = open(structure_extract_file, "w")
+        #se.write("ScanFold predicted structures which contain at least one base pair with Zavg < -1 have been extracted from "+str(name)+" results (sequence length "+str(length)+"nt) and have been refolded using RNAfold to determine their individual MFE, structure, z-score (using 100X randomizations), and ensemble diversity score.\n")
+        motif_num = 1
+        for es in extracted_structure_list[:]:
+        #try:
+            #print(str(i))
+            frag = es.sequence
+            fc = RNA.fold_compound(str(frag)) #creates "Fold Compound" object
+            fc.hc_add_from_db(str(es.structure))
+            fc.pf() # performs partition function calculations
+            frag_q = (RNA.pf_fold(str(frag))) # calculate partition function "fold" of fragment
+            (MFE_structure, MFE) = fc.mfe() # calculate and define variables for mfe and structure
+            MFE = round(MFE, 2)
+            MFE_total.append(MFE)
+            (centroid, distance) = fc.centroid() # calculate and define variables for centroid
+            ED = round(fc.mean_bp_distance(), 2) # this caclulates ED based on last calculated partition funciton
+            ED_total.append(ED)
+            #print(structure)
+            #fmfe = fc.pbacktrack()
+            #print(str(fmfe))
+            seqlist = [] # creates the list we will be filling with sequence fragments
+            seqlist.append(frag) # adds the native fragment to list
+            scrambled_sequences = scramble(frag, 100, type)
+            seqlist.extend(scrambled_sequences)
+            energy_list = energies(seqlist, temperature, algo)
+            try:
+                zscore = round(zscore_function(energy_list, 100), 2)
+            except:
+                zscore = zscore_function(energy_list, 100)
+            zscore_total.append(zscore)
+
+            pvalue = round(pvalue_function(energy_list, 100), 2)
+            #print(pvalue)
+            pvalue_total.append(pvalue)
+            accession = str(name)
+            ps_title = f"motif_{motif_num} coordinates {es.i} - {es.j}"
+            #print(macro)
+
+            with open(f"{name}_motif_{motif_num}.dbn", 'w') as es_dbn:
+                es_dbn.write(f">{name}_motif_{motif_num}_coordinates:{es.i}-{es.j}\n{frag}\n{MFE_structure}")
+            dbn2ct(f"{name}_motif_{motif_num}.dbn")
+            ###Create figure using forgi
+            # with open('tmp.fa', 'w') as file:
+            #     file.write('>tmp\n%s\n%s' % (frag, MFE_structure))
+            # cg = forgi.load_rna("tmp.fa", allow_many=False)
+            # fvm.plot_rna(cg, text_kwargs={"fontweight":"black"}, lighten=0.7, backbone_kwargs={"linewidth":3})
+            # plt.savefig(ps_title+".png")
+            # plt.clf()
+
+
+            RNA.PS_rna_plot_a(frag, MFE_structure, "motif_"+str(motif_num)+".ps", '', '')
+            gff_attributes = f'motif_{motif_num};sequence={es.sequence};structure={str(es.structure)};refoldedMFE={str(MFE_structure)};MFE(kcal/mol)={str(MFE)};z-score={str(zscore)};ED={str(ED)}'
+            se.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (str(accession), str("."), str("RNA_sequence_secondary_structure"), str(int((es.i)+1)), str(int((es.j)+1)), str("."), str("."), str("."), gff_attributes))
+            motif_num += 1
+
+        se.close()
 
 # def pairs_to_dataframe(sequence, structure):
 #     fold_i = 0
