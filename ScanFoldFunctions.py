@@ -594,6 +594,15 @@ def write_fasta(nucleotide_dictionary, outputfilename, name):
     w.write(">"+name+"\n")
     w.write(str(fasta_sequence)+"\n")
 
+def write_fai (nucleotide_dictionary, filename, name):
+    w = open(filename, 'w')
+    name = str(name)
+    length = str(len(nucleotide_dictionary))
+    offset = str(utf8len(str(">"+name+"\n")))
+    linebases = str(len(nucleotide_dictionary))
+    linewidth = str(len(nucleotide_dictionary)+1)
+    w.write("%s\t%s\t%s\t%s\t%s\n" % (name, length, offset, linebases, linewidth))
+
 def nuc_dict_to_seq(nucleotide_dictionary):
     fasta_sequence = str()
     for k, v in nucleotide_dictionary.items():
