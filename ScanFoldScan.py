@@ -38,17 +38,18 @@ def main(args):
     window_size = int(args.w)
     randomizations = int(args.r)
     algo = str(args.algorithm)
-
+    shuffle = str(args.shuffle)
+    
     basename = myfasta.split('.')[0]
     ### 5 feature Mean MFE model
     # mfe_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/5variable_meanMFEmodel')
     # stddev_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/5variable_stddevMFEmodel')
 
     ### 4 feature models
-    if shuffle = "mononucleotide":
+    if shuffle == "mononucleotide" or "mono":
         mfe_model = tf.keras.models.load_model(os.path.join(script_dir, 'MeanMFE'))
         stddev_model = tf.keras.models.load_model(os.path.join(script_dir, 'StdDev'))
-    if shuffle = "dinucleotide":
+    if shuffle == "dinucleotide" or "di":
         mfe_model = tf.keras.models.load_model(os.path.join(script_dir, 'DiMFE'))
         stddev_model = tf.keras.models.load_model(os.path.join(script_dir, 'DiStd'))
     ### Start main loop
