@@ -31,6 +31,7 @@ import argparse
 from itertools import repeat
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+import shutil
 
 import logging
 
@@ -47,6 +48,30 @@ def main(args):
     algo = "rnafold"
     type = "mono"
     cwd = os.getcwd()
+    es_path = args.es_path
+    igv_path = args.igv_path
+    inforna_path = args.inforna_path
+
+    ###create a folder for extracted_structures:
+    # extract_directory = "extracted_structures"
+    parent_directory = str(os.getcwd())
+    extract_path = os.path.join(parent_directory, es_path)
+    os.mkdir(extract_path)
+
+    ###create a folder for igv files:
+    # igv_directory = "igv_files"
+    parent_directory = str(os.getcwd())
+    #print(parent_directory)
+    igv_path = os.path.join(parent_directory, igv_path)
+    os.mkdir(igv_path)
+
+    ###create a folder for inforna_structures:
+    # inforna_directory = "inforna_structures"
+    parent_directory = str(os.getcwd())
+    inforna_path = os.path.join(parent_directory, inforna_path)
+    os.mkdir(inforna_path)
+
+
 
     ### This sets strand to forward (but can be set up as an argument if needed)
     strand = 1
@@ -453,49 +478,52 @@ def main(args):
             test_k = int(k)
             #logging.info(sum(test_k == int(v.jcoordinate) for v in best_bps.values()))
             if sum(test_k == int(v.jcoordinate) for v in best_bps.values()) >= 0:
-                #logging.info(start_coordinate, end_coordinate)
+                #print(start_coordinate, end_coordinate)
             ### Scan the entire dictionary:
-                #keys = range(int(start_coordinate), int(end_coordinate))
+                # keys = range(int(start_coordinate), int(end_coordinate))
 
             ### Scan two window's length flanking nucleotide:
-                #logging.info(len(best_bps))
-                # logging.info(length*4)
+                #print(len(best_bps))
+                # print(length*4)
+                length = len(nuc_dict)
+                #print(length)
                 if (len(best_bps) < length*4):
-                    #logging.info("success")
+                    #print("Scanning full dictionary")
                     #Length of input less than length of flanks
-                    keys = range(int(start_coordinate), int(end_coordinate))
+                    # keys = range(int(start_coordinate), int(end_coordinate))
+                    subdict = best_total_window_mean_bps
+
                 elif (
                     (v.icoordinate - length*(2)) >= int(start_coordinate) and
                     (v.icoordinate + (length*2)) <= int(end_coordinate)
                     ):
-                    #logging.info(str(v.icoordinate - length*(2)))
-                    # logging.info("MIDDLE")
+                    #print(str(v.icoordinate - length*(2)))
+                    # print("MIDDLE")
                     keys = range(int(v.icoordinate-(length*2)), int(v.icoordinate+(length*2)))
+                    subdict = {k: best_total_window_mean_bps[k] for k in keys}
 
                 elif (
                     int(v.icoordinate + (length*(2))) <= int(end_coordinate)and
                     (v.icoordinate + (length*2)) <= int(end_coordinate)
                 ):
-                    #logging.info("BEGINING"+str(v.icoordinate - (length*(2)))+" "+str(end_coordinate))
+                    #print("BEGINING"+str(v.icoordinate - (length*(2)))+" "+str(end_coordinate))
                     keys = range(int(start_coordinate), int(v.icoordinate+(length*2))+1)
+                    subdict = {k: best_total_window_mean_bps[k] for k in keys}
 
                 elif (v.icoordinate + (length*2)) >= int(end_coordinate):
                     if v.icoordinate-(length*2) > 0:
-                        #logging.info("END"+str(v.icoordinate + (length*2)))
+                        #print("END"+str(v.icoordinate + (length*2)))
                         keys = range(int(v.icoordinate-(length*2)), int(end_coordinate))
                     else:
                         keys =range(int(v.icoordinate-(length*2)), int(end_coordinate))
+                        subdict = {k: best_total_window_mean_bps[k] for k in keys}
+
+                elif len(best_bps) < length:
+                        subdict = best_total_window_mean_bps
 
                 else:
-                    logging.info("Sub-dictionary error")
+                    print("Sub-dictionary error")
                     raise ValueError("Sub-dictionary error")
-
-                #logging.info(keys)
-                subdict = {k: best_total_window_mean_bps[k] for k in keys}
-                # if k == 216:
-                #     for subk, subv in subdict.items():
-                #         logging.info(subk, subv.icoordinate, subv.jcoordinate)
-                #logging.info("SubDict length for "+str(k)+"="+str(len(subdict)))
 
                 if len(subdict) >= 0:
 
@@ -629,6 +657,13 @@ def main(args):
         makedbn(dbn_file_path2, "Zavg_-1")
         makedbn(dbn_file_path3, "Zavg_-2")
 
+        write_bp(final_partners, igv_path+"/"+outname+".bp", start_coordinate, name, minz)
+        write_wig_dict(final_partners, igv_path+"/"+outname+".zavgs.wig", name, step_size, str("zscore"))
+        write_wig_dict(final_partners, igv_path+"/"+outname+".mfe_avgs.wig", name, step_size, str("mfe"))
+        write_wig_dict(final_partners, igv_path+"/"+outname+".ed_avgs.wig", name, step_size, str("ed"))
+        write_bp(best_bps, igv_path+"/"+outname+".ALL.bp", start_coordinate, name, minz)
+
+
         write_bp(final_partners, outname+".bp", start_coordinate, name, minz)
         if args.bp_track is not None:
             write_bp(final_partners, args.bp_track, start_coordinate, name, minz)
@@ -646,6 +681,7 @@ def main(args):
             write_wig_dict(final_partners, args.ed_wig_file_path, name, step_size, str("ed"))
 
         write_bp(best_bps, outname+".ALL.bp", start_coordinate, name, minz)
+
 
     if competition == 0:
         if args.bp_track is not None:
@@ -713,7 +749,7 @@ def main(args):
     #############
     #Begin the structure extract process
     #Set flanking nucleotides to be folded
-    flanking = 4
+    flanking = 0
 
     #Set number of randomizations and shuffle type ("mono" or "di")
     sub_randomizations = 100
@@ -726,23 +762,26 @@ def main(args):
 
     #Read the structure of -2 filter2constraints
     if global_refold == False:
-        #refold from -2 constraints
-        # try:
-        dbn_file_filter2 = open(dbn_file_path3+".dbn", "r")
-        lines = dbn_file_filter2.readlines()
-        #logging.info(lines)
-        filter2constraints = str(lines[2])
-        full_fasta_sequence = str(lines[1])
+        # Refold from -1 constraints
+        if args.extract == 1:
+            dbn_file_filter1 = open(dbn_file_path2+".dbn", "r")
+            lines = dbn_file_filter1.readlines()
+            full_fasta_sequence = str(lines[1])
+            filter_constraints = str(lines[2])
+        if args.extract == 2:
+            dbn_file_filter2 = open(dbn_file_path3+".dbn", "r")
+            lines = dbn_file_filter2.readlines()
+            full_fasta_sequence = str(lines[1])
+            filter_constraints = str(lines[2])
 
-    dbn_file_filter2 = open(dbn_file_path3+".dbn", "r")
-    lines = dbn_file_filter2.readlines()
-    filter2structure = str(lines[2])
-    full_fasta_sequence = str(lines[1])
-    sequence = list(full_fasta_sequence)
-    structure = list(filter2structure)
-    length = len(full_fasta_sequence)
+    structure_raw = filter_constraints
+    sequence = list(str(full_fasta_sequence))
+    structure = list(structure_raw)
+    length = len(sequence)
     length_st = len(structure)
 
+    if length != length_st:
+        raise("Length of sequence and structure do not match")
 
     #Iterate through sequence to assign nucleotides to structure type
     m = 0
@@ -794,6 +833,60 @@ def main(args):
             continue
             # logging.info("no")
 
+        """ Repeat the process looking for non-nested "<..>" pairs """
+        #Inititate base pair tabulation variables
+        bond_order_pk = []
+        bond_count_pk = 0
+        nuc_dict_pk = {}
+        #Iterate through sequence to assign nucleotides to structure type
+        m = 0
+        while  m < length-1:
+            #print(m)
+            if structure[m] == '<':
+                #print(m, structure[m])
+                bond_count_pk += 1
+                bond_order_pk.append(bond_count_pk)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+
+            elif structure[m] == '>':
+            #    print(m, structure[m])
+                bond_order_pk.append(bond_count_pk)
+                bond_count_pk -= 1
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+
+            elif str(structure[m]) == ( '.' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '(' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( ')' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '{' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            elif str(structure[m]) == ( '}' ):
+            #    print(m, structure[m])
+                bond_order_pk.append(0)
+                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+            else:
+                #print("Error", bond_count_pk, (m+1), sequence[m], structure[m])
+                m += 1
+                continue
+
+
     #Initiate base_pair list
     base_pairs = []
 
@@ -810,44 +903,49 @@ def main(args):
         try:
             if (nuc_dict_refold[j].bond_order == 1) and (nuc_dict_refold[j].structure == '('):
                 structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
+                #print(nuc_dict[j].structure, j)
+                structure_start.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
 
             elif (nuc_dict_refold[j].bond_order == 0) and (nuc_dict_refold[j].structure == ')'):
                 structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_end.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
-                j += 1
-            elif (nuc_dict_refold[j].bond_order == 1) and (nuc_dict_refold[j].structure == '<'):
-                structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
-                j += 1
-
-            elif (nuc_dict_refold[j].bond_order == 0) and (nuc_dict_refold[j].structure == '>'):
-                structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_end.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
-                j += 1
-            elif (nuc_dict_refold[j].bond_order == 1) and (nuc_dict_refold[j].structure == '{'):
-                structure_count += 1
-                #logging.info(nuc_dict[j].structure)
-                structure_start.append(NucStructure(structure_count, nuc_dict[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
-                j += 1
-
-            elif (nuc_dict_refold[j].bond_order == 0) and (nuc_dict_refold[j].structure == '}'):
-                structure_count += 1
-                #logging.info(nuc_dict[j].structure)
+                #print(nuc_dict[j].structure, j)
                 structure_end.append(NucStructure(structure_count, nuc_dict_refold[j].coordinate, nuc_dict_refold[j].nucleotide, nuc_dict_refold[j].structure))
                 j += 1
             else:
                 j += 1
         except:
-            logging.info(j, "EXCEPT")
             j += 1
             continue
 
+    """ Repeat for non-nested """
+    j = 0
+    structure_count_pk = 0
+    structure_end_pk = []
+    structure_start_pk = []
+
+    while j < length:
+        #print(f"{j} non-nested")
+        try:
+            if (nuc_dict_pk[j].bond_order == 1) and (nuc_dict_pk[j].structure == '<'):
+                structure_count_pk += 1
+                #print(nuc_dict_pk[j].structure)
+                structure_start_pk.append(NucStructure(structure_count_pk, nuc_dict_pk[j].coordinate, nuc_dict_pk[j].nucleotide, nuc_dict_pk[j].structure))
+                j += 1
+
+            elif (nuc_dict_pk[j].bond_order == 0) and (nuc_dict_pk[j].structure == '>'):
+                structure_count_pk += 1
+                #print(nuc_dict_pk[j].structure)
+                structure_end_pk.append(NucStructure(structure_count, nuc_dict_pk[j].coordinate, nuc_dict_pk[j].nucleotide, nuc_dict_pk[j].structure))
+                j += 1
+            else:
+                j += 1
+        except:
+            #print("Here")
+            j += 1
+            continue
+
+    """Add to extracted structure list"""
     l = 0
     extracted_structure_list = []
     #logging.info(structure_start)
@@ -868,6 +966,23 @@ def main(args):
         extracted_structure_list.append(ExtractedStructure(l, seq, se_fold, s, e))
         l += 1
 
+    """ Repeat for non-nested """
+    l = 0
+    while l < int(len(structure_start_pk)):
+        offset = flanking
+        s = structure_start_coordinate =  int((structure_start_pk[l].coordinate)-offset-1)
+        e = structure_end_coordinate = int((structure_end_pk[l].coordinate)+offset-1)
+
+        seq = ""
+        fold = ""
+        for k, v in nuc_dict_pk.items():
+            if s <= k <= e:
+                seq += str(v.nucleotide)
+                fold += str(v.structure)
+
+        extracted_structure_list.append(ExtractedStructure(l, seq, fold, s, e))
+
+        l += 1
 
     zscore_total = []
     numerical_z = []
@@ -880,8 +995,6 @@ def main(args):
     #se.write("ScanFold predicted structures which contain at least one base pair with Zavg < -1 have been extracted from "+str(name)+" results (sequence length "+str(length)+"nt) and have been refolded using RNAfold to determine their individual MFE, structure, z-score (using 100X randomizations), and ensemble diversity score.\n")
     motif_num = 1
     for es in extracted_structure_list[:]:
-    #try:
-        #logging.info(str(i))
         frag = es.sequence
         fc = RNA.fold_compound(str(frag)) #creates "Fold Compound" object
         fc.hc_add_from_db(str(es.structure))
@@ -893,9 +1006,6 @@ def main(args):
         (centroid, distance) = fc.centroid() # calculate and define variables for centroid
         ED = round(fc.mean_bp_distance(), 2) # this caclulates ED based on last calculated partition funciton
         ED_total.append(ED)
-        #logging.info(structure)
-        #fmfe = fc.pbacktrack()
-        #logging.info(str(fmfe))
         seqlist = [] # creates the list we will be filling with sequence fragments
         seqlist.append(frag) # adds the native fragment to list
         scrambled_sequences = scramble(frag, 100, type)
@@ -906,27 +1016,20 @@ def main(args):
         except:
             zscore = zscore_function(energy_list, 100)
         zscore_total.append(zscore)
-
         pvalue = round(pvalue_function(energy_list, 100), 2)
-        #logging.info(pvalue)
         pvalue_total.append(pvalue)
         accession = str(name)
         ps_title = f"motif_{motif_num} coordinates {es.i} - {es.j}"
-        #logging.info(macro)
+        es_path = f"{extract_path}/{name}_motif_{motif_num}.dbn"
+        with open(es_path, 'w') as es_dbn:
+            es_dbn.write(f">{name}_motif_{motif_num}_coordinates:{es.i}-{es.j}_zscore={zscore}\n{frag}\n{MFE_structure}")
+        dbn2ct(es_path)
+        os.rename(f"{extract_path}/{name}_motif_{motif_num}.ct", f"{inforna_path}/{name}_motif_{motif_num}.ct")
 
-        with open(f"{name}_motif_{motif_num}.dbn", 'w') as es_dbn:
-            es_dbn.write(f">{name}_motif_{motif_num}_coordinates:{es.i}-{es.j}\n{frag}\n{MFE_structure}")
-        dbn2ct(f"{name}_motif_{motif_num}.dbn")
-        ###Create figure using forgi
-        # with open('tmp.fa', 'w') as file:
-        #     file.write('>tmp\n%s\n%s' % (frag, MFE_structure))
-        # cg = forgi.load_rna("tmp.fa", allow_many=False)
-        # fvm.plot_rna(cg, text_kwargs={"fontweight":"black"}, lighten=0.7, backbone_kwargs={"linewidth":3})
-        # plt.savefig(ps_title+".png")
-        # plt.clf()
+        # Create postcript files
+        RNA.PS_rna_plot_a(frag, MFE_structure, extract_path+"/motif_"+str(motif_num)+".ps", '', '')
 
-
-        RNA.PS_rna_plot_a(frag, MFE_structure, "motif_"+str(motif_num)+".ps", '', '')
+        # Set extracted structures up as GFF format
         gff_attributes = f'motif_{motif_num};sequence={es.sequence};structure={str(es.structure)};refoldedMFE={str(MFE_structure)};MFE(kcal/mol)={str(MFE)};z-score={str(zscore)};ED={str(ED)}'
         se.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (str(accession), str("."), str("RNA_sequence_secondary_structure"), str(int((es.i)+1)), str(int((es.j)+1)), str("."), str("."), str("."), gff_attributes))
         motif_num += 1
@@ -936,6 +1039,7 @@ def main(args):
     #     logging.info("Structure Extract failed for "+folder_name+", must extract manually.")
     #     continue
     #logging.info("TEST")
+    shutil.make_archive(inforna_path, 'zip', inforna_path)
     elapsed_time = round((time.time() - start_time), 2)
     logging.info("Total runtime: "+str(elapsed_time)+"s")
     logging.info("ScanFold-Fold analysis complete! Output found in folder named: "+folder_name)
@@ -961,6 +1065,16 @@ if __name__ == "__main__":
                         help='Name of output folder (defaults to header name or date/time)', default=None)
     parser.add_argument('-t', type=int, default=37,
                         help='Folding temperature in celsius; default = 37C')
+    parser.add_argument('--extract', type=int, default='2',
+                        help='Extract structures from minus 1 or minus 2 dbn file (2 or 1); Default = 2')
+    parser.add_argument('--es_path', type=str, default = "extracted_structures",
+                        help='')
+    parser.add_argument('--igv_path', type=str, default = "igv_files",
+                        help='')
+    parser.add_argument('--inforna_path', type=str, default = "inforna_structures",
+                        help='')
+
+
     # webserver stuff
     parser.add_argument('--logfile', default=sys.stdout, type=argparse.FileType('w', encoding='UTF-8'),
             help='Path to write log file to.')
