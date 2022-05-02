@@ -22,6 +22,8 @@ if __name__ == "__main__":
             help='Number of randomizations for background shuffling; default = 100')
     parser.add_argument('--algorithm', type=str, default="rnafold",
             help='Folding algorithm used; rnafold, rnastructure, mxfold')
+    parser.add_argument('--shuffle', type=str, default="mono",
+            help='Shuffling algorithm, mononucleotide (mono) or dinucleotide (di); Default=mononucleotide')
 
     # fold arguments
     parser.add_argument('-f', type=int, default=-2,
