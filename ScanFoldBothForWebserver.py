@@ -52,7 +52,15 @@ if __name__ == "__main__":
                         help='zscore_wig_file_path')
     parser.add_argument('--final_partners_wig', type=str,
                         help='final partners wig file path')
-
+    parser.add_argument('--extract', type=int, default='2',
+                        help='Extract structures from minus 1 or minus 2 dbn file (2 or 1); Default = 2')
+    parser.add_argument('--es_path', type=str, default = "extracted_structures",
+                        help='')
+    parser.add_argument('--igv_path', type=str, default = "igv_files",
+                        help='')
+    parser.add_argument('--inforna_path', type=str, default = "inforna_structures",
+                        help='')
+    
     # shared arguments
     parser.add_argument('-t', type=int, default=37,
                         help='Folding temperature in celsius; default = 37C')
