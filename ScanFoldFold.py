@@ -767,14 +767,14 @@ def main(args):
             dbn_file_filter1 = open(dbn_file_path2+".dbn", "r")
             lines = dbn_file_filter1.readlines()
             full_fasta_sequence = str(lines[1])
-            filter_constraints = str(lines[2])
+            filter2constraints = str(lines[2])
         if args.extract == 2:
             dbn_file_filter2 = open(dbn_file_path3+".dbn", "r")
             lines = dbn_file_filter2.readlines()
             full_fasta_sequence = str(lines[1])
-            filter_constraints = str(lines[2])
+            filter2constraints = str(lines[2])
 
-    structure_raw = filter_constraints
+    structure_raw = filter2constraints
     sequence = list(str(full_fasta_sequence))
     structure = list(structure_raw)
     length = len(sequence)
