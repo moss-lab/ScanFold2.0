@@ -781,7 +781,7 @@ def main(args):
     length_st = len(structure)
 
     if length != length_st:
-        raise("Length of sequence and structure do not match")
+        raise ValueError("Length of sequence and structure do not match")
 
     #Iterate through sequence to assign nucleotides to structure type
     m = 0
