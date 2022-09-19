@@ -23,6 +23,7 @@ import pandas as pd
 import tensorflow as tf
 import os
 import sys
+from io import StringIO
 
 import logging
 
@@ -39,7 +40,7 @@ def main(args):
     randomizations = int(args.r)
     algo = str(args.algorithm)
     shuffle = str(args.shuffle)
-    
+
     basename = myfasta.split('.')[0]
     ### 5 feature Mean MFE model
     # mfe_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/5variable_meanMFEmodel')
@@ -53,7 +54,12 @@ def main(args):
         mfe_model = tf.keras.models.load_model(os.path.join(script_dir, 'DiMFE'))
         stddev_model = tf.keras.models.load_model(os.path.join(script_dir, 'DiStd'))
     ### Start main loop
-    with open(myfasta, 'r') as forward_fasta:
+    with open(myfasta, 'r') as forward_fasta_raw:
+        raw_file = forward_fasta_raw.read()
+        if len(raw_file) > 0 and raw_file[0] != '>':
+            logging.info("Sequence not in FASTA format, attempting to convert. You can also resubmit sequence with a proper FASTA header (i.e. >SequenceName)")
+            raw_file = '>0\n' + raw_file
+        forward_fasta = StringIO(raw_file)
         for cur_record in SeqIO.parse(forward_fasta, "fasta"):
             ### Initialize dataframe
             df = pd.DataFrame(columns = ["Start", "End", "Temperature", "NativeMFE",
