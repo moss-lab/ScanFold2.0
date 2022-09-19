@@ -833,58 +833,58 @@ def main(args):
             continue
             # logging.info("no")
 
-        """ Repeat the process looking for non-nested "<..>" pairs """
-        #Inititate base pair tabulation variables
-        bond_order_pk = []
-        bond_count_pk = 0
-        nuc_dict_pk = {}
-        #Iterate through sequence to assign nucleotides to structure type
-        m = 0
-        while  m < length-1:
-            #print(m)
-            if structure[m] == '<':
-                #print(m, structure[m])
-                bond_count_pk += 1
-                bond_order_pk.append(bond_count_pk)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
+    """ Repeat the process looking for non-nested "<..>" pairs """
+    #Inititate base pair tabulation variables
+    bond_order_pk = []
+    bond_count_pk = 0
+    nuc_dict_pk = {}
+    #Iterate through sequence to assign nucleotides to structure type
+    m = 0
+    while  m < length-1:
+        #print(m)
+        if structure[m] == '<':
+            #print(m, structure[m])
+            bond_count_pk += 1
+            bond_order_pk.append(bond_count_pk)
+            nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+            m += 1
 
-            elif structure[m] == '>':
-            #    print(m, structure[m])
-                bond_order_pk.append(bond_count_pk)
-                bond_count_pk -= 1
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
+        elif structure[m] == '>':
+        #    print(m, structure[m])
+            bond_order_pk.append(bond_count_pk)
+            bond_count_pk -= 1
+            nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+            m += 1
 
-            elif str(structure[m]) == ( '.' ):
-            #    print(m, structure[m])
-                bond_order_pk.append(0)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-            elif str(structure[m]) == ( '(' ):
-            #    print(m, structure[m])
-                bond_order_pk.append(0)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-            elif str(structure[m]) == ( ')' ):
-            #    print(m, structure[m])
-                bond_order_pk.append(0)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-            elif str(structure[m]) == ( '{' ):
-            #    print(m, structure[m])
-                bond_order_pk.append(0)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-            elif str(structure[m]) == ( '}' ):
-            #    print(m, structure[m])
-                bond_order_pk.append(0)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-            else:
-                #print("Error", bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-                continue
+        elif str(structure[m]) == ( '.' ):
+        #    print(m, structure[m])
+            bond_order_pk.append(0)
+            nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+            m += 1
+        elif str(structure[m]) == ( '(' ):
+        #    print(m, structure[m])
+            bond_order_pk.append(0)
+            nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+            m += 1
+        elif str(structure[m]) == ( ')' ):
+        #    print(m, structure[m])
+            bond_order_pk.append(0)
+            nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+            m += 1
+        elif str(structure[m]) == ( '{' ):
+        #    print(m, structure[m])
+            bond_order_pk.append(0)
+            nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+            m += 1
+        elif str(structure[m]) == ( '}' ):
+        #    print(m, structure[m])
+            bond_order_pk.append(0)
+            nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
+            m += 1
+        else:
+            #print("Error", bond_count_pk, (m+1), sequence[m], structure[m])
+            m += 1
+            continue
 
 
     #Initiate base_pair list
