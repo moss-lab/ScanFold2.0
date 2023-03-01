@@ -65,6 +65,14 @@ class ExtractedStructure:
         self.structure = structure
         self.i = i
         self.j = j
+    def describeMe(self):
+        print("object id: " + str(id(self)))
+        print("structure count: " + str(self.structure_count))
+        print("sequence: " + str(self.sequence))
+        print("structure: " + str(self.structure))
+        print("i: " + str(self.i))
+        print("j: " + str(self.j))
+
 
 def randomString(stringLength=10):
     """Generate a random string of fixed length """

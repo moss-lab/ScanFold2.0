@@ -22,8 +22,6 @@ if __name__ == "__main__":
             help='Number of randomizations for background shuffling; default = 100')
     parser.add_argument('--algorithm', type=str, default="rnafold",
             help='Folding algorithm used; rnafold, rnastructure, mxfold')
-    parser.add_argument('--shuffle', type=str, default="mono",
-            help='Shuffling algorithm, mononucleotide (mono) or dinucleotide (di); Default=mononucleotide')
 
     # fold arguments
     parser.add_argument('-f', type=int, default=-2,
@@ -36,31 +34,7 @@ if __name__ == "__main__":
                         help='Global refold option. Refold full sequence using Zavg <-1 and <-2 base pairs')
     parser.add_argument('--folder_name',  type=str,
                         help='Name of output folder (defaults to header name or date/time)', default=None)
-    parser.add_argument('--fasta_file_path', type=str,
-                        help='fasta_file path')
-    parser.add_argument('--fasta_index', type=str,
-                        help='fasta index file path')
-    parser.add_argument('--bp_track', type=str,
-                        help='bp_track_file path')
-    parser.add_argument('--ed_wig_file_path', type=str,
-                        help='ed_wig_file_path')
-    parser.add_argument('--mfe_wig_file_path', type=str,
-                        help='mfe_wig_file_path')
-    parser.add_argument('--pvalue_wig_file_path', type=str,
-                        help='pvalue_wig_file_path')
-    parser.add_argument('--zscore_wig_file_path', type=str,
-                        help='zscore_wig_file_path')
-    parser.add_argument('--final_partners_wig', type=str,
-                        help='final partners wig file path')
-    parser.add_argument('--extract', type=int, default='2',
-                        help='Extract structures from minus 1 or minus 2 dbn file (2 or 1); Default = 2')
-    parser.add_argument('--es_path', type=str, default = "extracted_structures",
-                        help='')
-    parser.add_argument('--igv_path', type=str, default = "igv_files",
-                        help='')
-    parser.add_argument('--inforna_path', type=str, default = "inforna_structures",
-                        help='')
-    
+
     # shared arguments
     parser.add_argument('-t', type=int, default=37,
                         help='Folding temperature in celsius; default = 37C')
@@ -72,7 +46,6 @@ if __name__ == "__main__":
             help='Log level.')
     parser.add_argument('--webserver', type=str,
             help='If provided, the output folder is compressed into a tar.gz file and written to the path specified by this parameter')
-
 
     ### Parse arguments and convert to variables
     args = parser.parse_args()

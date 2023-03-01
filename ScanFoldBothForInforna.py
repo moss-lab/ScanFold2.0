@@ -11,7 +11,7 @@ import uuid
 from ScanFoldScan import main as scan_main
 from ScanFoldFold import main as fold_main
 from ScanFoldFunctions import random_with_N_digits
-from shutil import copyfile
+import shutil
 import glob
 
 if __name__ == "__main__":
@@ -43,6 +43,12 @@ if __name__ == "__main__":
                         help='Name of output folder (defaults to header name or date/time)')
     parser.add_argument('--extract', type=int, default='2',
                         help='Extract structures from minus 1 or minus 2 dbn file (2 or 1); Default = 2')
+    parser.add_argument('--es_path', type=str, default = "extracted_structures",
+                        help='name of extracted structures file')
+    parser.add_argument('--igv_path', type=str, default = "igv_files",
+                        help='name of IGV file')
+    parser.add_argument('--inforna_path', type=str, default = "inforna_structures",
+                        help='name of inforna file')
     # shared arguments
     parser.add_argument('-t', type=int, default=37,
                         help='Folding temperature in celsius; default = 37C')
@@ -54,7 +60,22 @@ if __name__ == "__main__":
             help='Log level.')
     parser.add_argument('--webserver', type=str,
             help='If provided, the output folder is compressed into a tar.gz file and written to the path specified by this parameter')
-
+    parser.add_argument('--fasta_file_path', type=str,
+                        help='fasta_file path')
+    parser.add_argument('--fasta_index', type=str,
+                        help='fasta index file path')
+    parser.add_argument('--bp_track', type=str,
+                        help='bp_track_file path')
+    parser.add_argument('--ed_wig_file_path', type=str,
+                        help='ed_wig_file_path')
+    parser.add_argument('--mfe_wig_file_path', type=str,
+                        help='mfe_wig_file_path')
+    parser.add_argument('--pvalue_wig_file_path', type=str,
+                        help='pvalue_wig_file_path')
+    parser.add_argument('--zscore_wig_file_path', type=str,
+                        help='zscore_wig_file_path')
+    parser.add_argument('--final_partners_wig', type=str,
+                        help='final partners wig file path')
     ### Parse arguments and convert to variables
     args = parser.parse_args()
 
@@ -83,10 +104,12 @@ if __name__ == "__main__":
             folder_name = args.folder_name
             cwd = os.getcwd()
             now = datetime.now() # current date and time
-            logging.info("\nMaking output folder named:"+folder_name)
-            os.mkdir(cwd+"/"+folder_name)
-            copyfile(args.filename, folder_name+"/"+args.filename)
-            os.chdir(cwd+"/"+folder_name)
+            #os.mkdir(cwd+"/"+folder_name)
+            if os.path.exists(os.path.join(cwd,folder_name)) == False:
+                logging.info("\nMaking output folder named:"+folder_name)
+                os.mkdir(os.path.join(cwd,folder_name))
+            shutil.copy(args.filename, os.path.join(cwd,folder_name))
+            os.chdir(os.path.join(cwd,folder_name))
             folder_name = str(folder_name)
 
         # # make a temporary file to store the scan results in
@@ -104,7 +127,6 @@ if __name__ == "__main__":
         scan_out_file_name = glob.glob('./*.tsv')
         print(scan_out_file_name)
         args.filename = str(glob.glob('./*.tsv')[0])
-
         fold_main(args)
 
     except Exception as e:

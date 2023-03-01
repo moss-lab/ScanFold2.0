@@ -1,5 +1,5 @@
-numpy~=1.22.4
-biopython~=1.79
-pandas~=1.4.2
-ViennaRNA~=2.5.0a5
-tensorflow~=2.9.1
+numpy~=1.19.2
+Bio~=0.8.9
+pandas~=1.3.3
+ViennaRNA~=2.4.18a1
+tensorflow~=2.6.0
