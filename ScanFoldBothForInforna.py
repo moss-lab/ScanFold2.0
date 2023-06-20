@@ -96,7 +96,7 @@ if __name__ == "__main__":
             folder_name = str("ScanFold_run_"+date_time)
             logging.info("\nMaking output folder named:"+folder_name)
             os.mkdir(cwd+"/"+folder_name)
-            copyfile(args.filename, cwd+"/"+folder_name+"/"+args.filename)
+            shutil.copyfile(args.filename, cwd+"/"+folder_name+"/"+args.filename)
             os.chdir(cwd+"/"+folder_name)
 
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         # fold_out_file_name = args.webserver
 
         # args.webserver = scan_out_file_name
-
+        start = time.time()
         scan_main(args)
 
         # args.webserver = fold_out_file_name
@@ -128,7 +128,9 @@ if __name__ == "__main__":
         print(scan_out_file_name)
         args.filename = str(glob.glob('./*.tsv')[0])
         fold_main(args)
-
+        end = time.time()
+        elapsed_time = float(end-start)
+        print("elapsed time: {t:10.3f}".format(t=elapsed_time)) 
     except Exception as e:
 
         if args.webserver:

@@ -199,9 +199,19 @@ def main(args):
                 # Initiate base pair tabulation variables
                 bond_order = []
                 bond_count = 0
-
+                bond_order_bracket = []
+                bond_count_bracket = 0
+                bond_order_curly = []
+                bond_count_curly = 0
+                bond_order_carrot = []
+                bond_count_carrot = 0
+                length = len(structure)
                 # Iterate through sequence to assign nucleotides to structure type
                 m = 0
+                n = 0
+                curly = 0
+                carrot = 0
+                paren_types = ['.','(',')','{','}','[',']','<','>']
                 while m < length:
                     if structure[m] == '(':
                         bond_count += 1
@@ -211,12 +221,64 @@ def main(args):
                         bond_order.append(bond_count)
                         bond_count -= 1
                         m += 1
-                    elif structure[m] == '.':
+                    elif structure[m] in paren_types:
                         bond_order.append(0)
                         m += 1
                     else:
-                        logging.info("Error")
+                        print(structure)
 
+                        print("Error in asigning nucleodides () to structure type")
+                        sys.exit("line 222")
+                while n < length:
+                    if structure[n] == '[':
+                        bond_count_bracket += 1
+                        bond_order_bracket.append(bond_count_bracket)
+                        n += 1
+                    elif structure[n] == ']':
+                        bond_order_bracket.append(bond_count_bracket)
+                        bond_count_bracket -= 1
+                        n += 1
+                    elif structure[n] in paren_types:
+                        bond_order_bracket.append(0)
+                        n += 1
+                    else:
+                        print("Error in asigning nucleodides [] to structure type")
+                        print(structure)
+                        sys.exit()
+
+                while curly < length:
+                    if structure[curly] == '{':
+                        bond_count_curly += 1
+                        bond_order_curly.append(bond_count_curly)
+                        curly += 1
+                    elif structure[curly] == '}':
+                        bond_order_curly.append(bond_count_curly)
+                        bond_count_curly -= 1
+                        curly += 1
+                    elif structure[curly] in paren_types:
+                        bond_order_curly.append(0)
+                        curly += 1
+                    else:
+                        print("Error in asigning nucleodides {} to structure type")
+                        print(structure)
+                        sys.exit()
+
+                while carrot < length:
+                    if structure[carrot] == '<':
+                        bond_count_carrot += 1
+                        bond_order_carrot.append(bond_count_carrot)
+                        carrot += 1
+                    elif structure[carrot] == '>':
+                        bond_order_carrot.append(bond_count_carrot)
+                        bond_count_carrot -= 1
+                        carrot += 1
+                    elif structure[carrot] in paren_types:
+                        bond_order_carrot.append(0)
+                        carrot += 1
+                    else:
+                        print("Error in asigning nucleodides to structure type")
+                        print(structure)
+                        sys.exit()
                 # Initiate base_pair list
                 base_pairs = []
 
@@ -239,9 +301,49 @@ def main(args):
                                 k += 1
                             else:
                                 k += 1
+                    elif bond_order_bracket[j] != 0:
+                        test = bond_order_bracket[j]
+                        base_pairs.append(j+1)
+                        bond_order_bracket[j] = 0
+                        j += 1
+                        k = 0
+                        while k < len(bond_order_bracket):
+                            if bond_order_bracket[k] == test:
+                                base_pairs.append(k+1)
+                                bond_order_bracket[k] = 0
+                                k += 1
+                            else:
+                                k += 1
+
+                    elif bond_order_curly[j] != 0:
+                        test = bond_order_curly[j]
+                        base_pairs.append(j+1)
+                        bond_order_curly[j] = 0
+                        j += 1
+                        k = 0
+                        while k < len(bond_order_curly):
+                            if bond_order_curly[k] == test:
+                                base_pairs.append(k+1)
+                                bond_order_curly[k] = 0
+                                k += 1
+                            else:
+                                k += 1
+
+                    elif bond_order_carrot[j] != 0:
+                        test = bond_order_carrot[j]
+                        base_pairs.append(j+1)
+                        bond_order_carrot[j] = 0
+                        j += 1
+                        k = 0
+                        while k < len(bond_order_carrot):
+                            if bond_order_carrot[k] == test:
+                                base_pairs.append(k+1)
+                                bond_order_carrot[k] = 0
+                                k += 1
+                            else:
+                                k += 1
                     else:
                         j += 1
-
                 # Iterate through "base_pairs" "to define bps
                 l = 0
                 while l < len(base_pairs):
@@ -795,7 +897,7 @@ def main(args):
                                               (n + 1),
                                               full_fasta_sequence[n],
                                               full_filter_structure[n])
-        elif i == '.' or '<' or '>' or '{' or '}':
+        elif i == '.' or '<' or '>' or '{' or '}' or '[' or ']':
             bond_order.append(0)
             nuc_dict_refold[n] = NucStructure(bond_count,
                                               (n + 1),
@@ -828,7 +930,7 @@ def main(args):
                                           (n + 1),
                                           full_fasta_sequence[n],
                                           full_filter_structure[n])
-        elif i == '.' or '(' or ')' or '{' or '}':
+        elif i == '.' or '(' or ')' or '{' or '}' or '[' or ']':
             bond_order_pk.append(0)
             nuc_dict_pk[n] = NucStructure(bond_count_pk,
                                           (n + 1),
@@ -841,6 +943,34 @@ def main(args):
         # print(str(nuc_dict_pk[n].structure))
         # print(str(nuc_dict_pk[n].coordinate))
 
+    """ Repeat the process looking for non-nested "[..]" pairs """
+    bond_count_pk = 0
+    bond_order_pk = []
+    nuc_dict_pk = {}
+    # Iterate through sequence to assign nucleotides to structure type
+    for n, i in enumerate(full_filter_structure):
+        if i == '[':
+            bond_count_pk += 1
+            bond_order_pk.append(bond_count)
+            nuc_dict_pk[n] = NucStructure(bond_count_pk,
+                                          (n + 1),
+                                          full_fasta_sequence[n],
+                                          full_filter_structure[n])
+        elif i == ']':
+            bond_order_pk.append(bond_count)
+            bond_count_pk -= 1
+            nuc_dict_pk[n] = NucStructure(bond_count_pk,
+                                          (n + 1),
+                                          full_fasta_sequence[n],
+                                          full_filter_structure[n])
+        elif i == '.' or '(' or ')' or '{' or '}' or '<' or ']':
+            bond_order_pk.append(0)
+            nuc_dict_pk[n] = NucStructure(bond_count_pk,
+                                          (n + 1),
+                                          full_fasta_sequence[n],
+                                          full_filter_structure[n])
+        else:
+            raise ValueError("Unrecognized structure in constraint file")
     """ Identify structural motifs """
     structure_count = 0
     structure_start = []
