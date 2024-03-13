@@ -1187,7 +1187,9 @@ def get_frag_feature_list(seq, step_size, window_size, algo, temperature):
         CGratio_list.append(CGratio)
         AUratio_list.append(AUratio)
         if algo == "rnafold":
-            fc = RNA.fold_compound(frag)
+            md = RNA.md()
+            md.temperature = temperature
+            fc = RNA.fold_compound(frag,md)
             fc.pf()
             (centroid, distance) = fc.centroid()
             ensemble_diversity = round(fc.mean_bp_distance(), 2)
