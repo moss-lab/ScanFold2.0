@@ -96,7 +96,9 @@ if __name__ == "__main__":
             folder_name = str("ScanFold_run_"+date_time)
             logging.info("\nMaking output folder named:"+folder_name)
             os.mkdir(cwd+"/"+folder_name)
-            shutil.copyfile(args.filename, cwd+"/"+folder_name+"/"+args.filename)
+            fname = args.filename.split('/')[-1]
+            shutil.copyfile(args.filename, cwd+"/"+folder_name+"/"+fname)
+
             os.chdir(cwd+"/"+folder_name)
 
 
