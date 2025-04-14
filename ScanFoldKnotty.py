@@ -1,5 +1,9 @@
 import subprocess
 import time
+
+# change if knotty binary is not installed in path
+KNOTTY_LOCATION = "knotty"
+
 class KnottyObject: 
     counter = 0
     '''
@@ -28,7 +32,7 @@ class KnottyObject:
         '''
         #TODO: this is temporary, change it in the release version 
         starttime = time.time()
-        knotty_location = "/work/LAS/wmoss-lab/programs/knotty/knotty"
+        knotty_location = KNOTTY_LOCATION
         args = [knotty_location,sequence,'-ns']
         #knotty_output = subprocess.Popen(args,stdout=subprocess.PIPE)
         #line = knotty_output.stdout.readline()
