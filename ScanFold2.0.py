@@ -35,6 +35,8 @@ parser.add_argument('-w', type=int, default=120,
                     help='Window size; default = 120')
 parser.add_argument('-r', type=int, default=100,
         help='Number of randomizations for background shuffling; default = 100')
+#parser.add_argument('-a', type=str, default='rnafold',
+#        help='Folding algorithm to use; default = rnafold')
 
 ### Parse arguments and convert to variables
 args = parser.parse_args()
@@ -43,6 +45,7 @@ temperature = int(args.t)
 step_size = int(args.s)
 window_size = int(args.w)
 randomizations = int(args.r)
+#algo = str(args.a)
 basename = myfasta.split('.')[0]
 
 ### 5 feature Mean MFE model
@@ -50,8 +53,8 @@ basename = myfasta.split('.')[0]
 # stddev_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/5variable_stddevMFEmodel')
 
 ### 4 feature models
-mfe_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/meanMFEmodel')
-stddev_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/stddevMFEmodel')
+mfe_model = tf.keras.models.load_model('/work/LAS/wmoss-lab/scripts/ScanFold2.0-inforna/MeanMFE')
+stddev_model = tf.keras.models.load_model('/work/LAS/wmoss-lab/scripts/ScanFold2.0-inforna/StdDev')
 
 ### Start main loop
 with open(myfasta, 'r') as forward_fasta:
