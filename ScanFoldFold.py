@@ -42,8 +42,8 @@ def main(args):
     cwd = os.getcwd()
     fasta_file_path = args.fasta_file_path
     es_path = args.es_path
-    igv_path = args.igv_path
-    inforna_path = args.inforna_path
+    igv_path_in = args.igv_path
+    inforna_path_in = args.inforna_path
     
     # parse string output of glob.glob into list
     if filename[0] == '[':
@@ -59,67 +59,79 @@ def main(args):
                 filename_split = tsv_file.split(".tsv")
                 outname = filename_split[0]
             except:
-                logging.info("Input name should have .tsv extension")
+                logging.inro("Input name should have .tsv extension")
                 outname = tsv_file
 
             # handle case of input file being an absolute path
             outname = os.path.basename(outname)
+            curr_dir = cwd
+            if len(filename) > 1:
+                unique_folder_name = str(outname + "_fold")
+                curr_dir = os.path.join(cwd, unique_folder_name)
+                if not os.path.exists(curr_dir):
+                    os.mkdir(curr_dir)
+                os.chdir(curr_dir)
+            # create a folder for extracted_structures:
+            # es_path = "extracted_structures"
+            if not os.path.isabs(es_path):
+                extract_path = os.path.join(curr_dir, es_path)
+                if not os.path.exists(extract_path):
+                    os.mkdir(extract_path)
 
+            # create a folder for igv files:
+            # igv_path = "igv_files"
+            if not os.path.isabs(igv_path_in):
+                igv_path = os.path.join(curr_dir, igv_path_in)
+                if not os.path.exists(igv_path):
+                    os.mkdir(igv_path)
+
+            # create a folder for inforna_structures:
+            # inforna_directory = "inforna_structures"
+            if not os.path.isabs(inforna_path_in):
+                inforna_path = os.path.join(curr_dir, inforna_path_in)
+                if not os.path.exists(inforna_path):
+                    os.mkdir(inforna_path)
             if folder_name is not None:
                 try:
-                    logging.info("Putting output in folder named:" + folder_name)
-                    name = folder_name
-                    full_output_path = os.path.join(cwd, folder_name)
                     if len(filename) > 1:
-                        unique_folder_name = str(outname + "_fold")
-                        full_output_path = os.path.join(full_output_path, unique_folder_name)
-                    logging.info(f"creating unique folder named: {full_output_path}")
+                        logging.info("Putting output in folder named:" + unique_folder_name)
+                        name = unique_folder_name
+                        full_output_path = os.path.join(curr_dir, unique_folder_name)
+                    else:
+                        logging.info("Putting output in folder named:" + folder_name)
+                        name = folder_name
+                        full_output_path = os.path.join(curr_dir, folder_name)
                     os.mkdir(full_output_path)
                     os.chdir(full_output_path)
+                    folder_name = str(folder_name)
                 except:
                     logging.info(f"WARNING: FOLDER NAME [{folder_name}] IS NOT UNIQUE")
                     raise FileExistsError(
                         "Folder name exists. Manually input unique folder name via --folder_name [FOLDER NAME]")
             else:
                 try:
-                    logging.info("Putting output in folder named:" + outname)
-                    full_output_path = os.path.join(cwd, outname + "_fold")
+                    folder_name = outname + ".Fold_output"
+                    if len(filename) > 1:
+                        logging.info("Putting output in folder named:" + unique_folder_name)
+                        name = unique_folder_name
+                        full_output_path = os.path.join(curr_dir, unique_folder_name)
+                    else:
+                        logging.info("Putting output in folder named:" + folder_name)
+                        full_output_path = os.path.join(curr_dir, folder_name)
                     os.mkdir(full_output_path)
                     os.chdir(full_output_path)
+                    folder_name = str(outname + "_fold")
                 except:
                     logging.info(f"WARNING: FOLDER NAME [{folder_name}] IS NOT UNIQUE")
                     raise FileExistsError(
                         "Folder name exists. Manually input unique folder name via --folder_name [FOLDER NAME]")
-
-            # create a folder for extracted_structures:
-            # es_path = "extracted_structures"
-            if not os.path.isabs(es_path):
-                extract_path = os.path.join(os.getcwd(), es_path)
-                print(extract_path)
-                if not os.path.exists(extract_path):
-                    os.mkdir(extract_path)
-
-            # create a folder for igv files:
-            # igv_path = "igv_files"
-            if not os.path.isabs(igv_path):
-                igv_path = os.path.join(os.getcwd(), igv_path)
-                print(igv_path)
-                if not os.path.exists(igv_path):
-                    os.mkdir(igv_path)
-
-            # create a folder for inforna_structures:
-            # inforna_directory = "inforna_structures"
-            if not os.path.isabs(inforna_path):
-                inforna_path = os.path.join(os.getcwd(), inforna_path)
-                print(inforna_path)
-                if not os.path.exists(inforna_path):
-                    os.mkdir(inforna_path)
             lines = f.readlines()[1:]  # skip header
             steplines1 = int(lines[0].split("\t")[0])
             steplines2 = int(lines[1].split("\t")[0])
             step_size = steplines2 - steplines1
-
-        # Initialize bp dictionary and z-score lists
+            # Initialize bp dictionary and z-score lists
+            z_score_list = []
+            bp_dict = {}
 
             # Reset file names #
             dbn_file_path = outname + ".AllDBN_refold.txt"
@@ -129,8 +141,6 @@ def main(args):
             dbn_file_path4 = outname + ".AllDBN.txt"
             structure_extract_file = outname + ".structure_extracts.txt"
 
-            z_score_list = []
-            bp_dict = {}
 
             # Generate nucleotide dictionary to assign each nucleotide in sequence a key
             nuc_dict = NucleotideDictionary(lines)

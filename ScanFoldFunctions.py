@@ -15,7 +15,6 @@ import multiprocessing
 import numpy as np
 from random import randint
 import tarfile
-from ScanFoldKnotty import *
 ### Tensorflow imports
 import pandas as pd
 
@@ -1230,14 +1229,6 @@ def get_frag_feature_list(seq, step_size, window_size, algo, temperature):
             except:
                 print("Error parsing MFE values", test)
             ensemble_diversity = 0.0
-        elif algo == "knotty":
-                #knotty is run in the KnottyObject constructor if only a sequence is given
-                fc = KnottyObject(str(frag))
-                structure = fc.structure
-                native_mfe = fc.mfe
-                #knotty doesn't produce a centroid or ensemble, fill in default values
-                centroid = "NA"
-                ensemble_diversity = 0.0
         elif algo == "test":
             structure = "[[.[[[[]]...]]]]..[[[..((((.......]]].))))((((([[[[{<)))))....]]]]}>..............................[[[[[[[....]].]]]]]..."
             native_mfe = -20
