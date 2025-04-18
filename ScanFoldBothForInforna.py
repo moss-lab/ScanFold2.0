@@ -19,7 +19,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # scan arguments
-    parser.add_argument('filename',  type=str,
+    parser.add_argument('filename',  nargs="+",
                         help='input filename')
     parser.add_argument('-s', type=int, default=1,
                         help='Step size; default = 1')
@@ -78,66 +78,66 @@ if __name__ == "__main__":
                         help='final partners wig file path')
     ### Parse arguments and convert to variables
     args = parser.parse_args()
-
+    filename = args.filename
     # set up logging
     loglevel = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(loglevel, int):
         raise ValueError('Invalid log level: %s' % loglevel)
 
     logging.basicConfig(stream=args.logfile, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=loglevel)
-
-    try:
-        # create and put results in folder based on time
-        if args.folder_name == None:
-            cwd = os.getcwd()
-            now = datetime.now() # current date and time
-            date_time = now.strftime("%m-%d-%Y_%H.%M")
-            date_time = date_time + "-" + str(random_with_N_digits(3))
-            folder_name = str("ScanFold_run_"+date_time)
-            logging.info("\nMaking output folder named:"+folder_name)
-            os.mkdir(cwd+"/"+folder_name)
-            fname = args.filename.split('/')[-1]
-            shutil.copyfile(args.filename, cwd+"/"+folder_name+"/"+fname)
-
-            os.chdir(cwd+"/"+folder_name)
-
-
-        if args.folder_name != None:
-            folder_name = args.folder_name
-            cwd = os.getcwd()
-            now = datetime.now() # current date and time
-            #os.mkdir(cwd+"/"+folder_name)
-            if os.path.exists(os.path.join(cwd,folder_name)) == False:
+    for sequence_file in filename:
+        try:
+            # create and put results in folder based on time
+            if args.folder_name == None:
+                cwd = os.getcwd()
+                now = datetime.now() # current date and time
+                date_time = now.strftime("%m-%d-%Y_%H.%M")
+                date_time = date_time + "-" + str(random_with_N_digits(3))
+                folder_name = str("ScanFold_run_"+date_time)
                 logging.info("\nMaking output folder named:"+folder_name)
-                os.mkdir(os.path.join(cwd,folder_name))
-            shutil.copy(args.filename, os.path.join(cwd,folder_name))
-            os.chdir(os.path.join(cwd,folder_name))
-            folder_name = str(folder_name)
+                os.mkdir(cwd+"/"+folder_name)
+                fname = sequence_file.split('/')[-1]
+                shutil.copyfile(sequence_file, cwd+"/"+folder_name+"/"+fname)
 
-        # # make a temporary file to store the scan results in
-        # scan_out_file = tempfile.NamedTemporaryFile(delete=False)
-        # scan_out_file_name = scan_out_file.name
-        # scan_out_file.close()
-        #
-        # fold_out_file_name = args.webserver
+                os.chdir(cwd+"/"+folder_name)
 
-        # args.webserver = scan_out_file_name
-        start = time.time()
-        scan_main(args)
 
-        # args.webserver = fold_out_file_name
-        scan_out_file_name = glob.glob('./*.tsv')
-        print(scan_out_file_name)
-        args.filename = str(glob.glob('./*.tsv')[0])
-        fold_main(args)
-        end = time.time()
-        elapsed_time = float(end-start)
-        print("elapsed time: {t:10.3f}".format(t=elapsed_time)) 
-    except Exception as e:
+            if args.folder_name != None:
+                folder_name = args.folder_name
+                cwd = os.getcwd()
+                now = datetime.now() # current date and time
+                #os.mkdir(cwd+"/"+folder_name)
+                if os.path.exists(os.path.join(cwd,folder_name)) == False:
+                    logging.info("\nMaking output folder named:"+folder_name)
+                    os.mkdir(os.path.join(cwd,folder_name))
+                shutil.copy(sequence_file, os.path.join(cwd,folder_name))
+                os.chdir(os.path.join(cwd,folder_name))
+                folder_name = str(folder_name)
 
-        if args.webserver:
-            # log so it shows up
-            logging.error(e, exc_info=True)
+            # # make a temporary file to store the scan results in
+            # scan_out_file = tempfile.NamedTemporaryFile(delete=False)
+            # scan_out_file_name = scan_out_file.name
+            # scan_out_file.close()
+            #
+            # fold_out_file_name = args.webserver
 
-        # still raise exception
-        raise
+            # args.webserver = scan_out_file_name
+            start = time.time()
+            scan_main(args)
+
+            # args.webserver = fold_out_file_name
+            scan_out_file_name = glob.glob('./*.tsv')
+            print(scan_out_file_name)
+            args.filename = str(glob.glob('./*.tsv'))
+            fold_main(args)
+            end = time.time()
+            elapsed_time = float(end-start)
+            print("elapsed time: {t:10.3f}".format(t=elapsed_time)) 
+        except Exception as e:
+
+            if args.webserver:
+                # log so it shows up
+                logging.error(e, exc_info=True)
+
+            # still raise exception
+            raise
