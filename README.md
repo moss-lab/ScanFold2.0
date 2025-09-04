@@ -6,10 +6,6 @@ ScanFold2.0 is a tool for analyzing RNA structure through scanning window predic
 
 ```bash
 python ScanFold2.0.py <input_fasta> [options]
-# or
-python RunScanFold2.0.py <input_fasta> [options]
-# or for Forna visualization
-python ScanFoldBothForInforna.py <input_fasta> [options]
 ```
 
 ## Parameters
