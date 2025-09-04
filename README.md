@@ -48,38 +48,6 @@ python ScanFold2.0.py <input_fasta> [options]
 | `--logfile` | Path to write log file | `sys.stdout` | Output destination for logging information |
 | `--loglevel` | Logging level | `INFO` | Standard Python logging levels |
 
-## Example Commands
-
-### Basic Usage
-```bash
-python ScanFold2.0/RunScanFold2.0.py input.fa
-```
-
-### Custom Window and Step Size
-```bash
-python ScanFold2.0/RunScanFold2.0.py input.fa -w 150 -s 10 -t 37
-```
-
-### Stricter Z-score Filtering
-```bash
-python ScanFold2.0/RunScanFold2.0.py input.fa -f -3
-```
-
-### Disable Competitive Base Pairing
-```bash
-python ScanFold2.0/RunScanFold2.0.py input.fa -c 0
-```
-
-### Generate Forna-Compatible Output
-```bash
-python ScanFold2.0/ScanFoldBothForInforna.py input.fa -f -2
-```
-
-### Full Parameter Example
-```bash
-python ScanFold2.0/RunScanFold2.0.py input.fa -w 120 -s 1 -r 100 -t 37 -f -2 -c 1 --id MyRNA --global_refold
-```
-
 ## Output Files
 
 ScanFold2.0 generates several output files:
