@@ -22,6 +22,10 @@ import argparse
 from Bio import SeqIO
 import pandas as pd
 import tensorflow as tf
+from datetime import datetime
+import os
+import sys
+import json
 
 ### Arguments
 parser = argparse.ArgumentParser()
@@ -33,8 +37,10 @@ parser.add_argument('-s', type=int, default=1,
                     help='Step size; default = 1')
 parser.add_argument('-w', type=int, default=120,
                     help='Window size; default = 120')
-parser.add_argument('-r', type=int, default=100,
-        help='Number of randomizations for background shuffling; default = 100')
+parser.add_argument('--folder', type=str, default=None,
+        help='Output folder name (default: ScanFold_YYYYMMDD_HHMMSS)')
+parser.add_argument('--shuffle', type=str, default='mono', choices=['mono', 'di'],
+        help='Shuffling type: mono (mononucleotide) or di (dinucleotide); default = mono')
 #parser.add_argument('-a', type=str, default='rnafold',
 #        help='Folding algorithm to use; default = rnafold')
 
@@ -44,17 +50,74 @@ myfasta = args.filename
 temperature = int(args.t)
 step_size = int(args.s)
 window_size = int(args.w)
-randomizations = int(args.r)
+output_folder = args.folder
+shuffle_type = args.shuffle
 #algo = str(args.a)
-basename = myfasta.split('.')[0]
 
-### 5 feature Mean MFE model
-# mfe_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/5variable_meanMFEmodel')
-# stddev_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/5variable_stddevMFEmodel')
+# Get absolute path of input file BEFORE changing directories
+myfasta = os.path.abspath(myfasta)
+basename = os.path.basename(myfasta).split('.')[0]
 
-### 4 feature models
-mfe_model = tf.keras.models.load_model('/work/LAS/wmoss-lab/scripts/ScanFold2.0-inforna/MeanMFE')
-stddev_model = tf.keras.models.load_model('/work/LAS/wmoss-lab/scripts/ScanFold2.0-inforna/StdDev')
+### Create output folder
+if output_folder is None:
+    # Generate timestamp-based folder name
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_folder = f"ScanFold_{timestamp}"
+
+# Create the output folder if it doesn't exist (use absolute path)
+output_folder = os.path.abspath(output_folder)
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+    print(f"Created output folder: {output_folder}")
+
+# Store original directory for model loading
+original_dir = os.getcwd()
+
+# Create log file with absolute path
+log_file = os.path.join(output_folder, "ScanFold_run.log")
+with open(log_file, 'w') as log:
+    log.write("="*60 + "\n")
+    log.write("ScanFold2.0 Run Log\n")
+    log.write("="*60 + "\n")
+    log.write(f"Date/Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    log.write(f"Input file: {myfasta}\n")
+    log.write(f"Output folder: {output_folder}\n")
+    log.write(f"\nParameters:\n")
+    log.write(f"  Temperature: {temperature}°C\n")
+    log.write(f"  Window size: {window_size} nt\n")
+    log.write(f"  Step size: {step_size} nt\n")
+    log.write(f"  Shuffle type: {shuffle_type}\n")
+    log.write(f"  Python version: {sys.version.split()[0]}\n")
+    log.write(f"  TensorFlow version: {tf.__version__}\n")
+    log.write("\n" + "="*60 + "\n\n")
+
+# Function to append to log file
+def log_message(message):
+    with open(log_file, 'a') as log:
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        log.write(f"[{timestamp}] {message}\n")
+        print(message)
+
+# Helper function to get output file path
+def get_output_path(filename):
+    return os.path.join(output_folder, filename)
+
+log_message(f"Starting ScanFold analysis...")
+
+### Load appropriate models based on shuffle type
+# Use local model paths relative to script directory (get before changing dir)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+if shuffle_type == 'di':
+    # Dinucleotide shuffling models
+    log_message("Using dinucleotide shuffling models (DiMFE/DiStd)")
+    mfe_model = tf.keras.models.load_model(os.path.join(script_dir, 'DiMFE'))
+    stddev_model = tf.keras.models.load_model(os.path.join(script_dir, 'DiStd'))
+else:
+    # Mononucleotide shuffling models (default)
+    log_message("Using mononucleotide shuffling models (MeanMFE/StdDev)")
+    mfe_model = tf.keras.models.load_model(os.path.join(script_dir, 'MeanMFE'))
+    stddev_model = tf.keras.models.load_model(os.path.join(script_dir, 'StdDev'))
 
 ### Start main loop
 with open(myfasta, 'r') as forward_fasta:
@@ -63,11 +126,11 @@ with open(myfasta, 'r') as forward_fasta:
             "Z-score", "p-value", "ED", "Sequeunce", "Structure", "centroid"])
         read_name = cur_record.name
         name = read_name
-        ### Create output files
-        output = str(read_name+"."+str(myfasta)+".ScanFold.")
+        ### Create output files with absolute paths
+        output = str(read_name+"."+os.path.basename(myfasta)+".ScanFold.")
         outname = str(read_name+".win_"+str(window_size)+".stp_"+str(step_size)+".csv")
-        log_total = open(outname+".ScanFold.log", 'w')
-        log_win = open(outname+".ScanFold.FinalPartners.txt", 'w')
+        log_total = open(get_output_path(outname+".ScanFold.log"), 'w')
+        log_win = open(get_output_path(outname+".ScanFold.FinalPartners.txt"), 'w')
 
         ### Grab sequence and its features
         cur_record_length = len(cur_record.seq)
@@ -85,7 +148,7 @@ with open(myfasta, 'r') as forward_fasta:
         (start_coordinate_list, end_coordinate_list, frag_list,
          length_list, GCpercent_list, CGratio_list, AUratio_list,
          mfe_list, structure_list, centroid_list,
-         ed_list) = get_frag_feature_list(seq, step_size, window_size)
+         ed_list, di_freq_list) = get_frag_feature_list(seq, step_size, window_size, 'rnafold', temperature)
 
         five_feature_predict = pd.DataFrame(columns = ["Length", "GCpercent","CGratio", "AUratio", "MFE"])
         five_feature_predict["Length"] = length_list
@@ -100,9 +163,13 @@ with open(myfasta, 'r') as forward_fasta:
         four_feature_predict["CGratio"] = CGratio_list
         four_feature_predict["AUratio"] = AUratio_list
 
+        # Combine with dinucleotide frequencies to create full feature set
+        full_feature_predict = four_feature_predict
+        di_freq_df = pd.DataFrame(di_freq_list, columns = ["AA","AU","AG","AC","UA","UU","UG","UC","GA","GU","GG","GC","CA","CU","CG", "CC"])
+        full_feature_predict = full_feature_predict.join(di_freq_df)
 
-        meanMFE_result = mfe_model.predict(four_feature_predict)
-        stddev_result = stddev_model.predict(four_feature_predict)
+        meanMFE_result = mfe_model.predict(full_feature_predict)
+        stddev_result = stddev_model.predict(full_feature_predict)
 
         zscore_list = []
         for i in range(0, len(mfe_list)):
@@ -119,12 +186,12 @@ with open(myfasta, 'r') as forward_fasta:
         df["Sequence"] = frag_list
         df["Structure"] = structure_list
         df["centroid"] = centroid_list
-        df.to_csv(outname, sep="\t")
+        df.to_csv(get_output_path(outname), sep="\t")
 
         minz = df["Z-score"].min()
-        print(minz)
+        log_message(f"Minimum Z-score: {minz}")
         elapsed_time = round((time.time() - start_time), 2)
-        print("ScanFold-Scan complete. Elapsed time: "+str(elapsed_time)+"s")
+        log_message(f"ScanFold-Scan complete. Elapsed time: {elapsed_time}s")
 
         """
         This is the beginning of "ScanFold-Fold".
@@ -402,8 +469,8 @@ with open(myfasta, 'r') as forward_fasta:
 
         #Iterate through round 1 i-j pairs
         elapsed_time = round((time.time() - start_time), 2)
-        print("ScanFold-Fold step 1 of 2 completed. Elapsed time: "+str(elapsed_time)+"s")
-        print("Detecting competing pairs...")
+        log_message(f"ScanFold-Fold step 1 of 2 completed. Elapsed time: {elapsed_time}s")
+        log_message("Detecting competing pairs...")
         j_coord_list = []
         for k, v in sorted(best_bps.items()):
             test_k = int(k)
@@ -504,22 +571,153 @@ with open(myfasta, 'r') as forward_fasta:
                                             best_bps[k].ed)
                 continue
         elapsed_time = round((time.time() - start_time), 2)
-        print("ScanFold-Fold step 2 of 2 completed. Elapsed time: "+str(elapsed_time)+"s")
-        print("Writing files")
-        strand = "forward"
-        write_bp(best_bps, basename+cur_record.name+".ALL.bp", start_coordinate, name, minz)
-        write_ct(final_partners, str(basename)+".no_filter.ct", float(10), strand, name, 1)
-        write_ct(final_partners, str(basename)+".minus_1.ct", float(-1), strand, name, 1)
-        write_ct(final_partners, str(basename)+".minus_2.ct", float(-2), strand, name, 1)
-        makedbn(str(basename)+".no_filter", "NoFilter")
-        makedbn(str(basename)+".minus_1", "Zavg_-1")
-        makedbn(str(basename)+".minus_2", "Zavg_-2")
-        write_bp(final_partners, outname+".bp", 1, name, minz)
-        write_wig_dict(final_partners, outname+".Zavg.wig", name, step_size)
-        write_wig(mfe_list, step_size, cur_record.name, outname+".scan-MFE.wig")
-        write_wig(zscore_list, step_size, cur_record.name, outname+".scan-zscores.wig")
-        write_wig((list([0] * len(mfe_list))), step_size, cur_record.name, outname+".scan-pvalue.wig")
-        write_wig(ed_list, step_size, cur_record.name, outname+".scan-ED.wig")
+        log_message(f"ScanFold-Fold step 2 of 2 completed. Elapsed time: {elapsed_time}s")
+        log_message("Writing output files...")
+
+        # Close analysis log files before writing final outputs
+        log_total.close()
+        log_win.close()
+
+        strand = 1  # 1 for forward strand, consistent with ScanFoldFold.py
+        write_bp(best_bps, get_output_path(basename+cur_record.name+".ALL.bp"), start_coordinate, name, minz)
+        write_ct(final_partners, get_output_path(str(basename)+".no_filter.ct"), float(10), strand, name, start_coordinate)
+        write_ct(final_partners, get_output_path(str(basename)+".minus_1.ct"), float(-1), strand, name, start_coordinate)
+        write_ct(final_partners, get_output_path(str(basename)+".minus_2.ct"), float(-2), strand, name, start_coordinate)
+        # makedbn expects base filename without extension and adds .ct/.dbn itself
+        # We need to use the full path without extension
+        makedbn(os.path.join(output_folder, str(basename)+".no_filter"), "NoFilter")
+        makedbn(os.path.join(output_folder, str(basename)+".minus_1"), "Zavg_-1")
+        makedbn(os.path.join(output_folder, str(basename)+".minus_2"), "Zavg_-2")
+        write_bp(final_partners, get_output_path(outname+".bp"), start_coordinate, name, minz)
+        write_wig_dict(final_partners, get_output_path(outname+".Zavg.wig"), name, step_size, "zscore")
+        write_wig(mfe_list, step_size, cur_record.name, get_output_path(outname+".scan-MFE.wig"))
+        write_wig(zscore_list, step_size, cur_record.name, get_output_path(outname+".scan-zscores.wig"))
+        write_wig(ed_list, step_size, cur_record.name, get_output_path(outname+".scan-ED.wig"))
 
         elapsed_time = round((time.time() - start_time), 2)
-        print("ScanFold completed. Elapsed time: "+str(elapsed_time)+"s")
+        log_message(f"ScanFold completed. Elapsed time: {elapsed_time}s")
+
+        # Create results README
+        results_readme = os.path.join(output_folder, "RESULTS_README.md")
+        with open(results_readme, 'w') as readme:
+            readme.write(f"# ScanFold2.0 Results\n\n")
+            readme.write(f"**Analysis completed:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            readme.write(f"## Input\n")
+            readme.write(f"- **File:** {os.path.basename(myfasta)}\n")
+            readme.write(f"- **Sequence:** {read_name}\n")
+            readme.write(f"- **Length:** {cur_record_length} nt\n\n")
+            readme.write(f"## Parameters\n")
+            readme.write(f"- **Temperature:** {temperature}°C\n")
+            readme.write(f"- **Window size:** {window_size} nt\n")
+            readme.write(f"- **Step size:** {step_size} nt\n")
+            readme.write(f"- **Shuffle type:** {shuffle_type} ({'dinucleotide' if shuffle_type == 'di' else 'mononucleotide'})\n")
+            readme.write(f"- **Minimum Z-score:** {minz}\n\n")
+            readme.write(f"## Output Files\n\n")
+            readme.write(f"### Main Results\n")
+            readme.write(f"- `{outname}` - Tab-delimited scan results with Z-scores\n")
+            readme.write(f"- `{outname}.ScanFold.FinalPartners.txt` - Final base pair partners\n")
+            readme.write(f"- `{outname}.ScanFold.log` - Detailed analysis log\n\n")
+            readme.write(f"### Structure Files\n")
+            readme.write(f"- `{basename}.no_filter.ct` - CT file with all base pairs\n")
+            readme.write(f"- `{basename}.minus_1.ct` - CT file filtered at Z ≤ -1\n")
+            readme.write(f"- `{basename}.minus_2.ct` - CT file filtered at Z ≤ -2\n")
+            readme.write(f"- `{basename}.no_filter.dbn` - Dot-bracket notation (all pairs)\n")
+            readme.write(f"- `{basename}.minus_1.dbn` - Dot-bracket notation (Z ≤ -1)\n")
+            readme.write(f"- `{basename}.minus_2.dbn` - Dot-bracket notation (Z ≤ -2)\n\n")
+            readme.write(f"### Track Files (WIG format)\n")
+            readme.write(f"- `{outname}.scan-zscores.wig` - Z-scores track\n")
+            readme.write(f"- `{outname}.scan-MFE.wig` - MFE values track\n")
+            readme.write(f"- `{outname}.scan-ED.wig` - Ensemble diversity track\n")
+            readme.write(f"- `{outname}.Zavg.wig` - Average Z-scores for base pairs\n\n")
+            readme.write(f"### Base Pair Files\n")
+            readme.write(f"- `{basename}{cur_record.name}.ALL.bp` - All base pairs with coordinates and scores\n")
+            readme.write(f"- `{outname}.bp` - Filtered base pairs\n")
+            readme.write(f"These files contain: i-coordinate, j-coordinate, i-nucleotide, j-nucleotide, Z-score, MFE\n")
+            readme.write(f"## How to View Results\n\n")
+            readme.write(f"### Quick Visualization with IGV\n\n")
+            readme.write(f"**EASIEST METHOD - Use the IGV Session File:**\n\n")
+            readme.write(f"```bash\n")
+            readme.write(f"1. Open IGV\n")
+            readme.write(f"2. File → Open Session → Select 'igv_session.json' from this folder\n")
+            readme.write(f"3. Everything loads automatically!\n")
+            readme.write(f"```\n\n")
+            readme.write(f"#### Manual Loading (if needed):\n")
+            readme.write(f"1. Download IGV from https://igv.org\n")
+            readme.write(f"2. File → Load Genome from File → Select your original FASTA\n")
+            readme.write(f"3. File → Load from File → Select the .wig files\n\n")
+            readme.write(f"## Structure Files\n\n")
+            readme.write(f"To visualize individual RNA structures:\n")
+            readme.write(f"- **Dot-bracket files** (.dbn): Can be pasted into web tools like Forna or RNAfold WebServer\n")
+            readme.write(f"- **CT files**: Use with VARNA or other structure visualization software\n")
+            readme.write(f"- **Filtered versions**: minus_1 = Z<-1, minus_2 = Z<-2 (more stringent)\n\n")
+
+        log_message(f"Results README created: RESULTS_README.md")
+
+        # Create IGV session file
+        igv_session_file = os.path.join(output_folder, "igv_session.json")
+
+        # Create track list for IGV
+        tracks = []
+
+        # Add z-score track (primary, in blue)
+        tracks.append({
+            "name": "ScanFold Z-scores",
+            "path": os.path.abspath(get_output_path(outname+".scan-zscores.wig")),
+            "format": "wig",
+            "color": "0,0,255",  # Blue for negative values
+            "altColor": "255,0,0",  # Red for positive values
+            "autoScale": False,
+            "min": -3,
+            "max": 1,
+            "height": 100
+        })
+
+        # Add MFE track
+        tracks.append({
+            "name": "MFE",
+            "path": os.path.abspath(get_output_path(outname+".scan-MFE.wig")),
+            "format": "wig",
+            "color": "0,150,0",  # Green
+            "autoScale": True,
+            "height": 50
+        })
+
+        # Add ED track
+        tracks.append({
+            "name": "Ensemble Diversity",
+            "path": os.path.abspath(get_output_path(outname+".scan-ED.wig")),
+            "format": "wig",
+            "color": "150,0,150",  # Purple
+            "autoScale": True,
+            "height": 50
+        })
+
+        # Add Zavg track
+        tracks.append({
+            "name": "Base Pair Avg Z-scores",
+            "path": os.path.abspath(get_output_path(outname+".Zavg.wig")),
+            "format": "wig",
+            "color": "0,100,200",  # Light blue
+            "autoScale": False,
+            "min": -2,
+            "max": 1,
+            "height": 50
+        })
+
+        # Create IGV session JSON
+        igv_session = {
+            "version": "1",
+            "reference": {
+                "fastaPath": myfasta  # Use the original input FASTA as reference
+            },
+            "locus": f"{read_name}:1-{cur_record_length}",  # Set view to full sequence
+            "tracks": tracks
+        }
+
+        # Write IGV session file
+        with open(igv_session_file, 'w') as f:
+            json.dump(igv_session, f, indent=2)
+
+        log_message(f"IGV session file created: igv_session.json")
+        log_message(f"To load in IGV: File → Open Session → {igv_session_file}")
+        log_message(f"All results saved to: {output_folder}")

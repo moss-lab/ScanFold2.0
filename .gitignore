@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+scanfold_env/
+scanfold2_venv/
+Pipfile
+Pipfile.lock
+
+# Conda
+conda-meta/
+
+# Output folders and files
+ScanFold_*/
+ScanFold_run_*/
+*.wig
+*.ct
+*.dbn
+*.bp
+*.tsv
+*.log
+*.csv
+igv_session.json
+RESULTS_README.md
+
+# System files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Test/temporary files
+test/
+test_*/
+testfold/
+tmp/
+temp/
+*.tmp
+
+# Large data files (optional - uncomment if needed)
+# *.fa
+# *.fasta
+# *.fna
+# *.zip
+# *.gz
+# *.tar
+
+# IGV
+igv*/
+igv_files/
+
+# Other project-specific
+dishuffle/
+inforna_structures/
+mirClusters/
+rna.ps
+*.console.log

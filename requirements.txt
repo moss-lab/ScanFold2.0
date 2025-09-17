@@ -1,5 +1,14 @@
-numpy~=1.19.2
-Bio~=0.8.9
-pandas~=1.3.3
-ViennaRNA~=2.4.18a1
-tensorflow~=2.6.0
+# ScanFold2.0 Requirements
+# Core dependencies
+numpy<2.0
+pandas>=1.3.0
+biopython>=1.79
+ViennaRNA>=2.5.0
+
+# TensorFlow - choose based on your platform:
+# For macOS with Apple Silicon (M1/M2/M3):
+# tensorflow-macos>=2.15,<2.16
+# tensorflow-metal
+
+# For other platforms:
+# tensorflow>=2.15,<2.16

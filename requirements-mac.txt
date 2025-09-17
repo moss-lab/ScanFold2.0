@@ -1,0 +1,7 @@
+# ScanFold2.0 Requirements for macOS (Apple Silicon)
+numpy<2.0
+pandas>=1.3.0
+biopython>=1.79
+tensorflow-macos>=2.15,<2.16
+tensorflow-metal
+ViennaRNA>=2.5.0

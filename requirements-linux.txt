@@ -1,0 +1,6 @@
+# ScanFold2.0 Requirements for Linux/Windows
+numpy<2.0
+pandas>=1.3.0
+biopython>=1.79
+tensorflow>=2.15,<2.16
+ViennaRNA>=2.5.0

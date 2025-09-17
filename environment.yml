@@ -1,0 +1,14 @@
+name: scanfold2
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python>=3.10  # Compatible with TensorFlow 2.15+
+  - pip
+  - numpy<2.0
+  - pandas>=1.3.0
+  - biopython>=1.79
+  - viennarna>=2.5.0
+  - pip:
+    - tensorflow>=2.15,<2.16  # Will automatically pick right version for platform
