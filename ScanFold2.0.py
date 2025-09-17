@@ -83,10 +83,9 @@ with open(myfasta, 'r') as forward_fasta:
             nuc_i += 1
 
         (start_coordinate_list, end_coordinate_list, frag_list,
-            length_list, GCpercent_list, CGratio_list, AUratio_list,
-            mfe_list, structure_list, centroid_list,
-            ed_list) =
-            +get_frag_feature_list(seq, step_size, window_size)
+         length_list, GCpercent_list, CGratio_list, AUratio_list,
+         mfe_list, structure_list, centroid_list,
+         ed_list) = get_frag_feature_list(seq, step_size, window_size)
 
         five_feature_predict = pd.DataFrame(columns = ["Length", "GCpercent","CGratio", "AUratio", "MFE"])
         five_feature_predict["Length"] = length_list
