@@ -198,112 +198,69 @@ with open(myfasta, 'r') as forward_fasta:
         """
         bp_dict = {}
 
-        for index, row in df.iterrows():
-            sequence = list(row["Sequence"])
-            structure = list(row["Structure"])
-            length = window_size
-            fold_i = 0
-            while fold_i < length:
-                #Unpaired nucleotide
-                if structure[fold_i] == '.':
-                    nucleotide = sequence[fold_i]
-                    coordinate = (fold_i + int(row["Start"]))
-                    x = NucPair(nucleotide, coordinate, nucleotide, coordinate,
-                                row["Z-score"], row["NativeMFE"], row["ED"])
-                    try:
-                        y = bp_dict[coordinate]
-                        y.append(x)
-                    except:
-                        bp_dict[coordinate] = []
-                        y = bp_dict[coordinate]
-                        y.append(x)
-                    fold_i += 1
+        # Vectorized processing of unpaired nucleotides
+        # Convert to numpy arrays for faster processing
+        import numpy as np
 
-                #Paired nucleotide
-                else:
-                    fold_i += 1
+        # Process all rows at once instead of iterating
+        sequences = df["Sequence"].values
+        structures = df["Structure"].values
+        starts = df["Start"].values.astype(int)
+        zscores = df["Z-score"].values
+        mfes = df["NativeMFE"].values
+        eds = df["ED"].values
 
-            #Inititate base pair tabulation variables
-            bond_order = []
-            bond_count = 0
+        # Process each window efficiently
+        for idx in range(len(df)):
+            sequence = sequences[idx]
+            structure = structures[idx]
+            start = starts[idx]
+            zscore = zscores[idx]
+            mfe = mfes[idx]
+            ed = eds[idx]
 
-            #Iterate through sequence to assign nucleotides to structure type
-            m = 0
-            while  m < length:
+            # Use numpy to find unpaired positions
+            unpaired_positions = np.array([i for i, s in enumerate(structure) if s == '.'])
 
-                if structure[m] == '(':
-                    bond_count += 1
-                    bond_order.append(bond_count)
-                    m += 1
-                elif structure[m] == ')':
-                    bond_order.append(bond_count)
-                    bond_count -= 1
-                    m += 1
-                elif structure[m] == '.':
-                    bond_order.append(0)
-                    m += 1
-                else:
-                    print("Error1")
+            # Batch create NucPair objects for unpaired nucleotides
+            for pos in unpaired_positions:
+                nucleotide = sequence[pos]
+                coordinate = pos + start
+                x = NucPair(nucleotide, coordinate, nucleotide, coordinate,
+                           zscore, mfe, ed)
+                if coordinate not in bp_dict:
+                    bp_dict[coordinate] = []
+                bp_dict[coordinate].append(x)
 
-            #Initiate base_pair list
+            # Optimized base pair finding using stack-based approach
             base_pairs = []
+            stack = []
 
-            #Create empty variable named test
-            test = ""
+            # Find base pairs efficiently with a single pass
+            for i, char in enumerate(structure):
+                if char == '(':
+                    stack.append(i + 1)  # Store 1-based position
+                elif char == ')':
+                    if stack:
+                        left_pos = stack.pop()
+                        base_pairs.extend([left_pos, i + 1])  # Store both positions
 
-            #Iterate through bond order
-            j = 0
-            while j < len(bond_order):
-                if bond_order[j] != 0:
-                    test = bond_order[j]
-                    base_pairs.append(j+1)
-                    bond_order[j] = 0
-                    j += 1
-                    k = 0
-                    while k < len(bond_order):
-                        if bond_order[k] == test:
-                            base_pairs.append(k+1)
-                            bond_order[k] = 0
-                            k += 1
-                        else:
-                            k += 1
-                else:
-                    j += 1
-
-            #Iterate through "base_pairs" "to define bps
-            l = 0
-            while l < len(base_pairs):
+            # Process base pairs efficiently
+            for l in range(0, len(base_pairs), 2):
                 lbp = base_pairs[l]
                 rbp = base_pairs[l+1]
 
-                lb = str(sequence[int(lbp)-1])
-                rb = str(sequence[int(rbp)-1])
+                lb = sequence[lbp-1]
+                rb = sequence[rbp-1]
 
-                lbp_coord = int(int(lbp)+int(row["Start"])-1)
-                rbp_coord = int(int(rbp)+int(row["Start"])-1)
-                x = NucPair(lb, lbp_coord, rb, rbp_coord, row["Z-score"], row["NativeMFE"], row["ED"])
-                z = NucPair(rb, rbp_coord, lb, lbp_coord, row["Z-score"], row["NativeMFE"], row["ED"])
+                lbp_coord = lbp + start - 1
+                rbp_coord = rbp + start - 1
+                x = NucPair(lb, lbp_coord, rb, rbp_coord, zscore, mfe, ed)
+                z = NucPair(rb, rbp_coord, lb, lbp_coord, zscore, mfe, ed)
 
-                #Try to append i-j pair to i-nuc for left i-nuc
-                try:
-                    y = bp_dict[lbp_coord]
-                    y.append(x)
-                #If i-nuc not defined, define it
-                except:
-                    bp_dict[lbp_coord] = []
-                    y = bp_dict[lbp_coord]
-                    y.append(x)
-
-                #Try to append i-j pair to i-nuc for right i-nuc
-                try:
-                    t = bp_dict[rbp_coord]
-                    t.append(z)
-                #If i-nuc not defined, define it
-                except:
-                    bp_dict[rbp_coord] = []
-                    t = bp_dict[rbp_coord]
-                    t.append(z)
-                l += 2
+                # Use dict.setdefault for cleaner code
+                bp_dict.setdefault(lbp_coord, []).append(x)
+                bp_dict.setdefault(rbp_coord, []).append(z)
 
         best_bps = {}
         best_sum_bps = {}
