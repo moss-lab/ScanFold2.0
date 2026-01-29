@@ -153,7 +153,7 @@ The WIG and BP files can be loaded into IGV (Integrative Genomics Viewer) for vi
 
 If you use ScanFold2.0, please cite:
 
-Andrews RJ, Rouse WB, O'Leary CA, Booher NJ, Moss WN. (2023). ScanFold 2.0: a rapid approach for identifying potential structured RNA targets in genomes and transcriptomes. *PeerJ* 11:e16061. https://doi.org/10.7717/peerj.16061
+Andrews RJ, Rouse WB, O'Leary CA, Booher NJ, Moss WN. (2023). ScanFold 2.0: a rapid approach for identifying potential structured RNA targets in genomes and transcriptomes. *PeerJ* 10:e14361. https://doi.org/10.7717/peerj.14361
 
 ## Support
 
