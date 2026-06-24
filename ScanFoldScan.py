@@ -23,6 +23,7 @@ import pandas as pd
 import tensorflow as tf
 import os
 import sys
+import tf_keras as k3
 
 import logging
 
@@ -34,8 +35,8 @@ def main(args):
 
     myfastas = args.filename
     temperature = int(args.t)
-    step_size = int(args.s)
-    window_size = int(args.w)
+    step_size = int(args.step)
+    window_size = int(args.window)
     randomizations = int(args.r)
     algo = str(args.algorithm)
 
@@ -44,8 +45,8 @@ def main(args):
     # stddev_model = tf.keras.models.load_model('/Users/ryanandrews/Desktop/scripts/5variable_stddevMFEmodel')
 
     ### 4 feature models
-    mfe_model = tf.keras.models.load_model(os.path.join(script_dir, 'MeanMFE'))
-    stddev_model = tf.keras.models.load_model(os.path.join(script_dir, 'StdDev'))
+    mfe_model = k3.models.load_model(os.path.join(script_dir, 'MeanMFE'))
+    stddev_model = k3.models.load_model(os.path.join(script_dir, 'StdDev'))
     for myfasta in myfastas:
         basename = myfasta.split('.')[0]
         ### Start main loop
@@ -137,9 +138,9 @@ if __name__ == "__main__":
                         help='input filename')
     parser.add_argument('-t', type=int, default=37,
                         help='Folding temperature in celsius; default = 37C')
-    parser.add_argument('-s', type=int, default=1,
+    parser.add_argument('-s', '--step', type=int, default=1,
                         help='Step size; default = 1')
-    parser.add_argument('-w', type=int, default=120,
+    parser.add_argument('-w', '--window', type=int, default=120,
                         help='Window size; default = 120')
     parser.add_argument('-r', type=int, default=100,
             help='Number of randomizations for background shuffling; default = 100')

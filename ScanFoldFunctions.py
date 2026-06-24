@@ -6,17 +6,64 @@ from multiprocessing import get_context
 import os
 import statistics
 import sys
-sys.path.append('/work/LAS/wmoss-lab/ViennaRNA/lib/python3.6/site-packages/')
-sys.path.append('/usr/local/lib/python3.6/site-packages')
-sys.path.append('/usr/local/lib/python3.9/site-packages/')
+#sys.path.append('/work/LAS/wmoss-lab/ViennaRNA/lib/python3.6/site-packages/')
+#sys.path.append('/usr/local/lib/python3.6/site-packages')
+#sys.path.append('/usr/local/lib/python3.9/site-packages/')
 import RNA
 #import RNAstructure
 import multiprocessing
 import numpy as np
 from random import randint
 import tarfile
+import lib.fold.fold as fold
+
 ### Tensorflow imports
 import pandas as pd
+
+class FileManager:
+    '''
+    context manager for opening files as a list of lines
+    without newlines (leading/trailing whitespace is left)
+    write/append methods write or append to file, newline
+    characters will be added automatically if an entry in
+    the list is missing one
+    you can either give write/append a list of lines as
+    an argument, or call it without an argument in which
+    case it writes/appends 'lines'
+    writing/appending something other than 'lines' will 
+    overwrite 'lines' to match the file
+    if you use append() without giving it a list it will 
+    append the current contents of 'lines' to the file
+    '''
+    def __init__(self, filename):
+        self.filename = filename
+        self.lines = []
+    def __enter__(self):
+        with open(filename, 'r') as ifile:
+            self.lines = ifile.read().splitlines()
+        return self
+    def __exit__(self):
+        del self.lines
+        del self.filename
+    def _write(self, writelines=None, mode='w'):
+        if writelines == None:
+            writelines = self.lines
+        # write input to self.lines
+        else:
+            if mode == 'w':
+                self.lines = []
+            for new_line in writelines:
+                self.lines.append(new_line.rstrip('\n'))
+        # write input to file
+        with open(filename, mode) as ofile:
+            for line in writelines:
+                ofile.write(line)
+                if line[-1] != '\n':
+                    ofile.write('\n')
+    def write(self, writelines=None):
+        self._write(writelines, 'w')
+    def append(self, writelines=None):
+        self._write(writelines, 'a')
 
 class NucZscore:
     #Nucleotide class; defines a nucleotide with a coordinate and a A,T,G,C,U
@@ -64,19 +111,242 @@ class ExtractedStructure:
         self.structure = structure
         self.i = i
         self.j = j
-    def describeMe(self):
-        print("object id: " + str(id(self)))
-        print("structure count: " + str(self.structure_count))
-        print("sequence: " + str(self.sequence))
-        print("structure: " + str(self.structure))
-        print("i: " + str(self.i))
-        print("j: " + str(self.j))
-
 
 def randomString(stringLength=10):
     """Generate a random string of fixed length """
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(stringLength))
+
+def makedbn_with_fasta(ctfile, fasta, name):
+    ctfullname = ctfile+".ct"
+    dbnfullname = ctfile+".dbn"
+    with open(fasta, 'r') as ifile:
+        fasta_lines = ifile.readlines()
+    header = fasta_lines[0].strip()
+    header = header + "_" + name + '\n'
+    sequence = list(fasta_lines[1].strip())
+    dbstructure_ls = []
+    pairs = []
+    for i in range(len(sequence)):
+        dbstructure_ls.append('.')
+    dbstructure = ''.join(dbstructure_ls)
+    with open(ctfullname, 'r') as ifile:
+        ct_lines = ifile.readlines()
+    for line in ct_lines[1:]:
+        i_coord = int(line[0]) - 1
+        j_coord = int(line[-2]) - 1
+        if j_coord < 0:
+            j_coord = i_coord
+        pairs.append((i_coord, j_coord))
+    #pairs_to_db(pairs, dbstructure)
+    fold.getDBFromPairs(pairs, dbstructure)
+    sequence = ''.join(sequence) + '\n'
+    dbstructure = ''.join(dbstructure)
+    with open(dbnfullname, 'w') as ofile:
+        ofile.write(header)
+        ofile.write(sequence)
+        ofile.write(dbstructure)
+
+def db_to_pairs(dbstructure):
+    # TODO: currently the function to get pairs from a db structure only works
+    # with brackets, not letters, may need to change that
+    brak_pairs = fold.findPairsInDotBracket(dbstructure)
+    return brak_pairs
+    '''
+def pairs_to_db(pairs, dbstructure, start=0, parens=('(', ')')):
+    '''
+    '''
+    takes a list of base pairs (tuple), a dot-bracket structure initialized
+    to a list of '.', a start coordinate, and a type of parenthesis to use
+    the last two shouldn't be used when calling this
+    each iteration of the function will either:
+        -do nothing but call a new iteration on the next pair (case of an
+         unpaired base outside of a hairpin)
+        -fill out a nested hairpin that has no non-nested pairs and call a 
+         new iteration on the next pair after that hairpin
+        -fill out a nested hairpin, call a new iteration on a non-nested
+         hairpin within that nested hairpin, and if it is not a non-nested 
+         hairpin itself call a new iteration on the next pair
+        -fill out a non-nested hairpin and return without calling a new
+         iteration (the previous iteration will handle that), calling a 
+         new iteration on any non-nested hairpins it finds within that 
+         non-nested hairpin
+        -end if it reaches the end of the list of pairs
+    in any case it returns index of the next pair in the list, unless it 
+    has reached the end of the list, in which case it returns the index of 
+    the last pair plus one
+    '''
+    '''
+    new_start = start+1
+    if new_start >= len(pairs):
+        # reached the end of the list of pairs
+        return new_start
+    open_paren = parens[0]
+    close_paren = parens[1]
+    outer_i = pairs[start][0]
+    outer_j = pairs[start][1]
+    if outer_i == outer_j:
+        # unpaired base outside of a helix
+        # call a new iteration on whatever is next
+        rvalue = pairs_to_helix(pairs, dbstructure, new_start, parens)
+        return rvalue
+    # if i and j are pairs, set them so in the db structure
+    dbstructure[outer_i] = open_paren
+    dbstructure[outer_j] = close_paren
+    # fill out the hairpin between i and j
+    current_pair_index = start
+    for current_i, current_j in pairs[new_start:]:
+        current_pair_index += 1 # now equal to new_start on first iteration
+        if current_i > outer_j:
+            # reached the end of this helix
+            # since each pair is represented once, the pair (outer_j, j') doesn't
+            # exist so we don't need to worry about it, this pair will always
+            # begin after the last helix ends
+            # since this will be at the end of any non-nested helices, we also
+            # reset 'parens'
+            rvalue = pairs_to_helix(pairs, dbstructure, current_pair_index, ('(', ')')) 
+            return rvalue
+        elif current_i == current_j:
+            # unpaired
+            continue
+        elif current_i <= outer_i:
+            # a previous pair that wasn't caught in a previous recursion
+            # should be unnecessary since unlike previous versions each 
+            # pair is represented only once as (i,j) where j > i, sorted by i
+            # included as an error just in case
+            wrong_pair = str(current_i) + ", " + str(current_j)
+            error_string = (f"error converting list of pairs to helix at {wrong_pair} (0-indexed), pairs are likely out of order")
+            raise Exception(error_string)
+        #elif current_i == current_j:
+            # loop/bulge, don't need to do anything
+        elif current_j < outer_j:
+            # nested pair
+            dbstructure[current_i] = open_paren
+            dbstructure[current_j] = close_paren
+        elif current_j > outer_j:
+            # non-nested pair, do recursion
+            # function is called again with parens used to denote a pseudoknot within
+            # the current ones: (.[.{.<.).].}.>
+            new_parens = choose_paren(open_paren)
+            rvalue = pairs_to_helix(pairs, dbstructure, current_pair_index, new_parens)
+            return rvalue
+        elif current_j == outer_j or current_i == outer_j:
+            wrong_pair = str(current_i) + ", " + str(current_j)
+            error_string = (f"error converting list of pairs to helix at {wrong_pair} (0-indexed), a pair is likely represented twice")
+            raise Exception(error_string)
+'''
+def choose_paren(paren):
+    # give open paren to go down one level of pseudoknotting
+    # can handle 30 levels before defaulting to showing them unpaired
+    if paren == '(':
+        return ('[', ']')
+    elif paren == '[':
+        return ('{', '}')
+    elif paren == '{':
+        return ('<', '>')
+    # lower/upper case letters
+    elif paren == '<':
+        return ('a', 'A')
+    elif ord(paren) > 96 and ord(paren) < 122:
+        new_open = chr(ord(paren)+1)
+        new_close = chr(ord(new_open)-32)
+        return(new_open, new_close)
+    else:
+        return ('.', '.')
+def get_matching_paren(paren):
+    # returns close/open bracket that matches the input
+    if paren == '(':
+        return ')'
+    elif paren == ')':
+        return '('
+    elif paren == '[':
+        return ']'
+    elif paren == ']':
+        return '['
+    elif paren == '{':
+        return '}'
+    elif paren == '}':
+        return '{'
+    elif paren == '<':
+        return '>'
+    elif paren == '>':
+        return '<'
+    elif ord(paren) > 96 and ord(paren) < 123:
+        return chr(ord(paren)-32) 
+    elif ord(paren) > 64 and ord(paren) < 91:
+        return chr(ord(new_open)+32)
+    else:
+        return '.'
+        
+        
+def extract_structures(dbstructure):
+    '''
+    extracts sub-structures from dot-bracket structure dbstructure (any iterable)
+    returns list of start and end coordinates (0 indexed) of structures
+    '''
+    def clean_parens(paren_dict):
+        '''
+        used to remove any counters set to zero in a dictionary that tracks
+        open and close brackets encountered (see below for details)
+        '''
+        to_delete = []
+        for key, count in paren_dict.items():
+            if key == '.' or count == 0:
+                to_delete.append(key)
+        for key in to_delete:
+            paren_dict.pop(key)
+    def add_paren(paren_dict, key):
+        '''
+        takes a dictionary with open brackets and a counter (can be empty)
+        and an open/close bracket
+        if key is an open bracket it increments that counter by one
+        if key is a close bracket it decrements the counter of the open bracket 
+        by one
+        when all counters are zero, you've reached the end of a substructure
+        including any non-nested pairs
+        '''
+        key_to_update = ''
+        # check if bracket not encountered
+        # if so, add it
+        if key == '.':
+            return
+        # check if close bracket, remove 1 from open bracket
+        if (key == ')' or key == '}' or key == ']' or key == '>' 
+            or (ord(key) > 64 and ord(key) < 91)):
+            key_to_update = get_matching_paren(key)
+            if paren_dict.get(key_to_update) is None:
+                raise Exception("errror in structure extraction: closing bracket with no corresponding open bracket encountered in dbn structure!")
+            else:
+                paren_dict[key_to_update] -= 1
+        else:
+            key_to_update = key
+            if paren_dict.get(key) is None:
+                # add to dictionary if isn't there already
+                paren_dict.update({key: 1})
+            else:
+                # add 1 if paired
+                paren_dict[key] += 1
+
+    structures = []
+    sub_structure_start = 0
+    sub_structure_end = 0
+    parens = {}
+    open_structure = False  # whether we're currently iterating over a substructure
+    for index, char in enumerate(dbstructure):
+        if char != '.' and not open_structure:
+            # found a new substructure, start on it
+            open_structure = True
+            sub_structure_start = index
+        if open_structure:
+            # add current position to the dictionary of brackets
+            add_paren(parens, char)
+            clean_parens(parens)
+            if len(parens) == 0:
+                # reached the end of a substructure
+                sub_structure_end = index
+                open_structure = False
+                structures.append((sub_structure_start, sub_structure_end))
+    return structures
 
 
 def makedbn(ctfile, name):
@@ -470,7 +740,230 @@ def best_basepair(bp_dict, nucleotide, coordinate, type):
         print(k)
 
     return best_bp;
+def filter_base_pairs(base_pair_list, z_filter=sys.float_info.max):
+    new_list = []
+    for pair in base_pair_list:
+        if pair.getZNorm() <= z_filter:
+            new_list.append(pair)
+    return new_list
+def make_ct_lines(base_pair_list, sequence, strand, start_coordinate, end_coordinate):
+    # takes output from greedy_approximation (sorted, no redundant pairs, some pairs missing)
+    # creates lines (no header or filter) for .ct file
+    # last entry in the line- after newline- is the znorm
+    # output from this goes to list_to_ct
+    ct_lines = []   
+    missing_lines = []
+    unique_ct_lines = []
+    if strand == 1:
+        for idx,pair in enumerate(base_pair_list):
+            # start_coordinate is 1-indexed
+            # pair.i_coord is 0 indexed
+            # ct file should be 1 indexed
+            znorm = pair.getZNorm()
+            i_coord = pair.i_coord + 1 - start_coordinate + 1
+            j_coord = pair.j_coord + 1
+            i_nuc = pair.i_nucleotide
+            j_nuc = pair.j_nucleotide
+            
+            if i_coord > j_coord:
+                i_coord, j_coord = j_coord, i_coord
+                i_nuc, j_nuc = j_nuc, i_nuc
+            
+            elif i_coord == j_coord:
+                j_coord = 0
+            next_icoord = i_coord+1
+            if idx < len(base_pair_list)-1:
+                actual_next_icoord = base_pair_list[idx+1].i_coord + 1 - start_coordinate + 1
+                while next_icoord != actual_next_icoord:
+                    newline = [next_icoord, sequence[next_icoord-1], next_icoord-1, next_icoord+1, 0, next_icoord, '\n', sys.float_info.max]
+                    next_icoord += 1
+                    missing_lines.append(newline)
 
+            #if pair.getZNorm() < filter:
+            #    ct_lines.append([i_coord, i_nuc, (i_coord-1), (i_coord+1), j_coord, i_coord, '\n'])
+            #    if jcoord != 0:
+            #        ct_lines.append([jcoord, jnuc, jcoord-1, jcoord+1, icoord, jcoord, '\n']) 
+            #else:
+            #    ct_lines.append([i_coord, i_nuc, i_coord-1, i_coord+1, 0, i_coord])
+            #    if j_coord != 0:
+            #        ct_lines.append([jcoord, jnuc, jcoord-1, jcoord+1, 0, jcoord, '\n'])
+            ct_lines.append([i_coord, i_nuc, (i_coord-1), (i_coord+1), j_coord, i_coord, '\n', znorm])
+            if j_coord != 0:
+                ct_lines.append([j_coord, j_nuc, j_coord-1, j_coord+1, i_coord, j_coord, '\n', znorm]) 
+        ct_lines.extend(missing_lines)
+        ct_lines.sort(key=lambda x : x[0])  # sort by coordinates
+        for idx,line in enumerate(ct_lines):
+            if len(unique_ct_lines) == 0:
+                # add 1st line
+                unique_ct_lines.append(line)
+                continue
+            if unique_ct_lines[-1][0] == line[0]:
+                # never add redundant i coordinates to unique_ct_lines
+                continue
+            # check if there are redundant lines
+            if idx < (len(ct_lines)-2): # avoids error from trying to access idx+1
+                if ct_lines[idx+1][0] == line[0]:
+                    # redundant lines, get rid of them if unpaired
+                    # for each line, check if the next is for the same i coordinate
+                    # if it is, and this line is unpaired, continue
+                    # this works because among the redundant lines, only one should be paired
+                    # so this will fire for all but one
+                    # if none are paired (ie pair missed the filter), it will add the last one
+                    # because in that case this if statement will not fire
+                    # this will not add the last unpaired line if a paired line for this i coord
+                    # was already added because of the previous if statement
+                    if line[4] == 0:
+                        continue
+            unique_ct_lines.append(line)
+        return unique_ct_lines
+
+    if strand == -1:
+        for idx,pair in enumerate(sorted(base_pair_list, key=lambda x: x.i_coord, reverse = True)):
+            i_coord = end_coordinate + 1 - pair.i_coord + 1
+            j_coord = end_coordinate + 1 - pair.j_coord + 1
+            i_nuc = pair.i_nucleotide
+            j_nuc = pair.j_nucleotide
+            znorm = pair.getZNorm()
+            if i_coord > j_coord:
+                i_coord, j_coord = j_coord, i_coord
+                i_nuc, j_nuc = j_nuc, i_nuc
+            elif i_coord == j_coord:
+                j_coord = 0
+            next_icoord = i_coord+1
+            if idx < len(base_pair_list)-1:
+                actual_next_icoord = base_pair_list[idx+1].i_coord + 1 - start_coordinate + 1
+                while next_icoord != actual_next_icoord:
+                    newline = [next_icoord, sequence[next_icoord-1], next_icoord-1, next_icoord+1, 0, next_icoord, '\n', sys.float_info.max]
+                    next_icoord += 1
+                    missing_lines.append(newline)
+
+            ct_lines.append([i_coord, i_nuc, (i_coord-1), (i_coord+1), j_coord, i_coord, '\n', znorm])
+            if j_coord != 0:
+                ct_lines.append([j_coord, j_nuc, j_coord-1, j_coord+1, i_coord, j_coord, '\n', znorm]) 
+        ct_lines.extend(missing_lines)
+        ct_lines.sort(key=lambda x : x[0])  # sort by coordinates
+        for idx,line in enumerate(ct_lines):
+            if len(unique_ct_lines) == 0:
+                # add 1st line
+                unique_ct_lines.append(line)
+                continue
+            if unique_ct_lines[-1][0] == line[0]:
+                # never add redundant i coordinates to unique_ct_lines
+                continue
+            # check if there are redundant lines
+            if ct_lines[idx+1][0] == line[0]:
+                # redundant lines, get rid of them if unpaired
+                # for each line, check if the next is for the same i coordinate
+                # if it is, and this line is unpaired, continue
+                # this works because among the redundant lines, only one should be paired
+                # so this will fire for all but one
+                # if none are paired (ie pair missed the filter), it will add the last one
+                # because in that case this if statement will not fire
+                # this will not add the last unpaired line if a paired line for this i coord
+                # was already added because of the previous if statement
+                if line[4] == 0:
+                    continue
+            unique_ct_lines.append(line)
+        return unique_ct_lines
+def list_to_ct(base_pair_list, filename, filter, strand, name, start_coordinate, end_coordinate): 
+    w = open(filename, 'w') 
+    w.write((str(len(base_pair_list))+"\t"+name+"\n"))
+    bp_list = base_pair_list
+    if strand == 1:
+        for pair in base_pair_list:
+            # start_coordinate is 1-indexed
+            # pair.i_coord is 0 indexed
+            # ct file should be 1 indexed
+            i_coord = pair.i_coord + 1 - start_coordinate + 1
+            j_coord = pair.j_coord + 1
+            i_nuc = pair.i_nucleotide
+            j_nuc = pair.j_nucleotide
+            if i_coord > j_coord:
+                i_coord, j_coord = j_coord, i_coord
+                i_nuc, j_nuc = j_nuc, i_nuc
+            elif i_coord == j_coord:
+                j_coord = 0
+            if pair.getZNorm() < filter:
+                w.write("%d %s %d %d %d %d\n" % (i_coord, i_nuc, (i_coord-1), (i_coord+1), j_coord, i_coord))
+            else:
+                w.write("%d %s %d %d %d %d\n" % (i_coord, i_nuc, (i_coord-1), (i_coord+1), 0, i_coord))
+    if strand == -1:
+        for pair in sorted(base_pair_list, key=lambda x: x.i_coord, reverse = True):
+            i_coord = end_coordinate + 1 - pair.i_coord + 1
+            j_coord = end_coordinate + 1 - pair.j_coord + 1
+            i_nuc = pair.i_nucleotide
+            j_nuc = pair.j_nucleotide
+            if i_coord > j_coord:
+                i_coord, j_coord = j_coord, i_coord
+                i_nuc, j_nuc = j_nuc, i_nuc
+            elif i_coord == j_coord:
+                j_coord = 0
+            if pair.getZNorm() < filter:
+                w.write("%d %s %d %d %d %d\n" % (i_coord, i_nuc, (i_coord-1), (i_coord+1), j_coord, i_coord))
+    w.close()
+
+def lines_to_ct(ct_lines, filename, filter, name): 
+    # ct_lines should be output of make_ct_lines() 
+    with open(filename, 'w') as w:
+        w.write((str(len(ct_lines)-1)+"\t"+name+"\n"))
+        for line in ct_lines:
+            if line[-1] < filter:
+                w.write("%d %s %d %d %d %d \n" % (line[0], line[1], line[2], line[3], line[4], line[5]))
+            else:
+                w.write("%d %s %d %d %d %d \n" % (line[0], line[1], line[2], line[3], 0, line[5]))
+
+    '''    
+def list_to_ct(base_pair_list, sequence, filename, filter, strand, name, start_coordinate, end_coordinate): 
+    w = open(filename, 'w')
+    ct_lines = []
+    w.write((str(len(base_pair_list))+"\t"+name+"\n"))
+    if strand == 1:
+        for idx,pair in enumerate(base_pair_list):
+            # start_coordinate is 1-indexed
+            # pair.i_coord is 0 indexed
+            # ct file should be 1 indexed
+            i_coord = pair.i_coord + 1 - start_coordinate + 1
+            j_coord = pair.j_coord + 1
+            i_nuc = pair.i_nucleotide
+            j_nuc = pair.j_nucleotide
+            
+            if i_coord > j_coord:
+                i_coord, j_coord = j_coord, i_coord
+                i_nuc, j_nuc = j_nuc, i_nuc
+            
+            elif i_coord == j_coord:
+                j_coord = 0
+            next_icoord = icoord+1
+            actual_next_icoord = base_pair_list[idx+1].i_coord + 1 - start_coordinate + 1
+            while next_icoord != actual_next_icoord:
+                newline = [next_icoord, sequence[next_icoord-1], next_icoord-1, next_icoord+1, 0, next_icoord, '\n']
+                next_icoord += 1
+                missing_lines.append(newline)
+
+            if pair.getZNorm() < filter:
+                ct_lines.append([i_coord, i_nuc, (i_coord-1), (i_coord+1), j_coord, i_coord, '\n'])
+                if jcoord != 0:
+                    ct_lines.append([jcoord, jnuc, jcoord-1, jcoord+1, icoord, jcoord, '\n']) 
+            else:
+                ct_lines.append([i_coord, i_nuc, i_coord-1, i_coord+1, 0, i_coord])
+                if j_coord != 0:
+                    ct_lines.append([jcoord, jnuc, jcoord-1, jcoord+1, 0, jcoord, '\n'])
+
+    if strand == -1:
+        for pair in sorted(base_pair_list, key=lambda x: x.i_coord, reverse = True):
+            i_coord = end_coordinate + 1 - pair.i_coord + 1
+            j_coord = end_coordinate + 1 - pair.j_coord + 1
+            i_nuc = pair.i_nucleotide
+            j_nuc = pair.j_nucleotide
+            if i_coord > j_coord:
+                i_coord, j_coord = j_coord, i_coord
+                i_nuc, j_nuc = j_nuc, i_nuc
+            elif i_coord == j_coord:
+                j_coord = 0
+            if pair.getZNorm() < filter:
+                w.write("%d %s %d %d %d %d\n" % (i_coord, i_nuc, (i_coord-1), (i_coord+1), j_coord, i_coord))         
+    w.close()
+'''
 def write_ct(base_pair_dictionary, filename, filter, strand, name, start_coordinate):
     #Function to write connectivity table files from a list of best i-j pairs
     w = open(filename, 'w')
@@ -619,6 +1112,25 @@ def nuc_dict_to_seq(nucleotide_dictionary):
 
     return fasta_sequence
 
+def write_wig_list(base_pair_list, outputfilename, name, step_size, metric):
+    w = open(outputfilename, 'w')
+    #write wig file header
+    w.write("%s %s %s %s %s\n" % ("fixedStep", "chrom="+name, "start=1", "step="+str(step_size), "span="+str(step_size)))
+    #write values of zscores
+    for pair in base_pair_list:
+        if str(metric) == 'zscore':
+            zscore = pair.getZNorm()
+            w.write("%f\n" % (zscore))
+
+        elif str(metric) == 'mfe':
+            mfe = pair.getMFENorm()
+            w.write("%f\n" % (mfe))
+
+        elif str(metric) == 'ed':
+            ed = pair.getEDNorm()
+            w.write("%f\n" % (ed))
+        else:
+            print("Set metric to zscore, mfe, or ed")
 def write_wig_dict(nucleotide_dictionary, outputfilename, name, step_size, metric):
     w = open(outputfilename, 'w')
     #write wig file header
@@ -656,7 +1168,134 @@ def write_wig(metric_list, step, name, outputfilename):
             except:
                 w.write("%s\n" % (metric))
                 #print(metric)
+'''
+def write_bp_from_list(base_pair_list, filename, start_coordinate, name, minz):
+    w = open(filename, 'w')
+    #set color for bp file (igv format)
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 55, 129, 255, str("Less than -2 "+str(minz))))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 89, 222, 111, "-1 to -2"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 236, 236, 136, "0 to -1"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 199, 199, 199, "0"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 228, 228, 228, "0 to 1"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 243, 243, 243, "1 to 2"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 247, 247, 247, str("Greater than 2")))
+    i = 0
+    for pair in base_pair_list:
+        #choose color
+        zscore = pair.getZNorm()
+        if float(zscore) < float(-2):
+            score = str(0)
+            #print(k, v.zscore, score)
 
+        elif (float(zscore) < int(-1)) and (float(zscore) >= -2):
+            score = str(1)
+            #print(k, v.zscore, score)
+
+        elif (float(zscore) < int(0)) and (float(zscore) >= -1):
+            score = str(2)
+            #print(k, v.zscore, score)
+
+        elif float(zscore) == 0 :
+            score = str(3)
+            #print(k, v.zscore, score)
+
+        elif 0 < float(zscore) <= 1:
+            score = str(4)
+            #print(k, v.zscore, score)
+
+        elif 1 < float(zscore) <= 2:
+            score = str(5)
+            #print(k, v.zscore, score)
+
+        elif float(zscore) > 2:
+            score = str(6)
+            #print(k, v.zscore, score)
+
+        else:
+            print(k, zscore, score)
+
+
+        score = str(score)
+
+        # ensure coordinates to start at 1 to match with converted fasta file
+        sc = start_coordinate
+        if start_coordinate < 1:
+            sc = 1
+        #print(length)
+
+
+        if int(pair.i_coord) < int(pair.j_coord):
+            w.write("%s\t%d\t%d\t%d\t%d\t%s\n" % (name, int(pair.i_coord)-sc, int(pair.i_coord)-sc, int(pair.j_coord)-sc, int(pair.j_coord)-sc, score))
+        elif int(pair.i_coord) > int(pair.j_coord):
+            w.write("%s\t%d\t%d\t%d\t%d\t%s\n" % (name, int(pair.i_coord)-sc, int(pair.i_coord)-sc, int(pair.j_coord)-sc, int(pair.j_coord)-sc, score))
+        elif int(pair.i_coord) == int(pair.j_coord):
+            w.write("%s\t%d\t%d\t%d\t%d\t%s\n" % (name, k-sc, k-sc, int(pair.j_coord)-sc, int(pair.j_coord)-sc, score))
+        else:
+            print("2 Error at:", k)
+'''
+def write_bp_from_list(base_pair_list, filename, start_coordinate, name):
+    w = open(filename, 'w')
+    #set color for bp file (igv format)
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 55, 129, 255, str("Less than -2 ")))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 89, 222, 111, "-1 to -2"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 236, 236, 136, "0 to -1"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 199, 199, 199, "0"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 228, 228, 228, "0 to 1"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 243, 243, 243, "1 to 2"))
+    w.write("%s\t%d\t%d\t%d\t%s\n" % (str("color:"), 247, 247, 247, str("Greater than 2")))
+    i = 0
+    for pair in base_pair_list:
+        #choose color
+        zscore = pair.getZNorm()
+        if float(zscore) < float(-2):
+            score = str(0)
+            #print(k, v.zscore, score)
+
+        elif (float(zscore) < int(-1)) and (float(zscore) >= -2):
+            score = str(1)
+            #print(k, v.zscore, score)
+
+        elif (float(zscore) < int(0)) and (float(zscore) >= -1):
+            score = str(2)
+            #print(k, v.zscore, score)
+
+        elif float(zscore) == 0 :
+            score = str(3)
+            #print(k, v.zscore, score)
+
+        elif 0 < float(zscore) <= 1:
+            score = str(4)
+            #print(k, v.zscore, score)
+
+        elif 1 < float(zscore) <= 2:
+            score = str(5)
+            #print(k, v.zscore, score)
+
+        elif float(zscore) > 2:
+            score = str(6)
+            #print(k, v.zscore, score)
+
+        else:
+            print(k, zscore, score)
+
+
+        score = str(score)
+
+        # ensure coordinates to start at 1 to match with converted fasta file
+        sc = start_coordinate
+        if start_coordinate < 1:
+            sc = 1
+        #print(length)
+
+
+        if int(pair.i_coord) < int(pair.j_coord):
+            w.write("%s\t%d\t%d\t%d\t%d\t%s\n" % (name, int(pair.i_coord)-sc, int(pair.i_coord)-sc, int(pair.j_coord)-sc, int(pair.j_coord)-sc, score))
+        elif int(pair.i_coord) > int(pair.j_coord):
+            w.write("%s\t%d\t%d\t%d\t%d\t%s\n" % (name, int(pair.i_coord)-sc, int(pair.i_coord)-sc, int(pair.j_coord)-sc, int(pair.j_coord)-sc, score))
+        elif int(pair.i_coord) == int(pair.j_coord):
+            w.write("%s\t%d\t%d\t%d\t%d\t%s\n" % (name, int(pair.i_coord)-sc, int(pair.i_coord)-sc, int(pair.j_coord)-sc, int(pair.j_coord)-sc, score))
+        else:
+            print("2 Error at:", k)
 def write_bp(base_pair_dictionary, filename, start_coordinate, name, minz):
 
     w = open(filename, 'w')
@@ -1037,17 +1676,6 @@ def dbn2ct(dbnfile):
                 bond_order.append(0)
                 nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
                 m += 1
-
-            elif str(structure[m]) == ( '[' ):
-            #    print(m, structure[m])
-                bond_order.append(0)
-                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
-                m += 1
-            elif str(structure[m]) == ( ']' ):
-            #    print(m, structure[m])
-                bond_order.append(0)
-                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
-                m += 1
             else:
                 print("Error", bond_count, (m+1), sequence[m], structure[m])
                 m += 1
@@ -1120,6 +1748,7 @@ def get_au_ratio(frag):
 
     return au_ratio
 
+# don't use this, ever -Evelyn
 def get_svm_zscore(frag):
     frag = str(frag)
     fc = RNA.fold_compound(frag)
@@ -1228,11 +1857,6 @@ def get_frag_feature_list(seq, step_size, window_size, algo, temperature):
                 native_mfe = float(native_mfe)
             except:
                 print("Error parsing MFE values", test)
-            ensemble_diversity = 0.0
-        elif algo == "test":
-            structure = "[[.[[[[]]...]]]]..[[[..((((.......]]].))))((((([[[[{<)))))....]]]]}>..............................[[[[[[[....]].]]]]]..."
-            native_mfe = -20
-            centroid = "NA"
             ensemble_diversity = 0.0
         else:
             print("No folding algorihm properly passed to function.")
@@ -1442,7 +2066,7 @@ def merge_files(destination, *sources):
         for fname in sources:
             with open(fname) as infile:
                 for line in infile:
-                    outfile.write(line)
+                    outfile.write(line.strip() + '\n')
 
 def make_tar(destination, source):
     with open(destination, 'wb') as output_wb:
@@ -1456,6 +2080,7 @@ def random_with_N_digits(n):
     range_start = 10**(n-1)
     range_end = (10**n)-1
     return randint(range_start, range_end)
+
 
 def structure_extract(args):
     parser = argparse.ArgumentParser()
@@ -1492,7 +2117,7 @@ def structure_extract(args):
         #print(split_header[10])
         accesion = filename
         #print (accesion)
-        fname_list = accesion.split('/')
+        fname_list = accesion.split(os.sep)
         fname_part = fname_list[len(fname_list) -1]
         #print(fname_part)
         fname = f'ExtrStr_{fname_part}.txt'
@@ -1614,17 +2239,6 @@ def structure_extract(args):
                 nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
                 m += 1
             elif str(structure[m]) == ( '}' ):
-            #    print(m, structure[m])
-                bond_order_pk.append(0)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-
-            elif str(structure[m]) == ( '[' ):
-            #    print(m, structure[m])
-                bond_order_pk.append(0)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-            elif str(structure[m]) == ( ']' ):
             #    print(m, structure[m])
                 bond_order_pk.append(0)
                 nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
