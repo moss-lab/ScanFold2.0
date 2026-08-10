@@ -15,6 +15,7 @@ import multiprocessing
 import numpy as np
 from random import randint
 import tarfile
+
 ### Tensorflow imports
 import pandas as pd
 
@@ -1037,17 +1038,6 @@ def dbn2ct(dbnfile):
                 bond_order.append(0)
                 nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
                 m += 1
-
-            elif str(structure[m]) == ( '[' ):
-            #    print(m, structure[m])
-                bond_order.append(0)
-                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
-                m += 1
-            elif str(structure[m]) == ( ']' ):
-            #    print(m, structure[m])
-                bond_order.append(0)
-                nuc_dict[m] = NucStructure(bond_count, (m+1), sequence[m], structure[m])
-                m += 1
             else:
                 print("Error", bond_count, (m+1), sequence[m], structure[m])
                 m += 1
@@ -1228,11 +1218,6 @@ def get_frag_feature_list(seq, step_size, window_size, algo, temperature):
                 native_mfe = float(native_mfe)
             except:
                 print("Error parsing MFE values", test)
-            ensemble_diversity = 0.0
-        elif algo == "test":
-            structure = "[[.[[[[]]...]]]]..[[[..((((.......]]].))))((((([[[[{<)))))....]]]]}>..............................[[[[[[[....]].]]]]]..."
-            native_mfe = -20
-            centroid = "NA"
             ensemble_diversity = 0.0
         else:
             print("No folding algorihm properly passed to function.")
@@ -1614,17 +1599,6 @@ def structure_extract(args):
                 nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
                 m += 1
             elif str(structure[m]) == ( '}' ):
-            #    print(m, structure[m])
-                bond_order_pk.append(0)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-
-            elif str(structure[m]) == ( '[' ):
-            #    print(m, structure[m])
-                bond_order_pk.append(0)
-                nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
-                m += 1
-            elif str(structure[m]) == ( ']' ):
             #    print(m, structure[m])
                 bond_order_pk.append(0)
                 nuc_dict_pk[m] = NucStructure(bond_count_pk, (m+1), sequence[m], structure[m])
