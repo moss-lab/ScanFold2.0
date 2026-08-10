@@ -13,6 +13,7 @@ from ScanFoldFold import main as fold_main
 from ScanFoldFunctions import random_with_N_digits
 import shutil
 import glob
+import pathlib
 
 if __name__ == "__main__":
 
@@ -29,12 +30,6 @@ if __name__ == "__main__":
             help='Number of randomizations for background shuffling; default = 100')
     parser.add_argument('--algorithm', type=str, default="rnafold",
             help='Folding algorithm used; rnafold, rnastructure, mxfold')
-    parser.add_argument('--M', dest='M', action='store_true',
-            help='if true, instead of using the SVM the program will manually fold a number of times equal to the value for -r (default 100)')
-    parser.set_defaults(M=False)
-
-    parser.add_argument('--type', type=str, dest='type_', default='mono',
-                        help='Randomization type')
 
     # fold arguments
     parser.add_argument('-f', type=int, default=-2,
@@ -101,15 +96,14 @@ if __name__ == "__main__":
             date_time = date_time + "-" + str(random_with_N_digits(3))
             folder_name = str("ScanFold_run_"+date_time)
             logging.info("\nMaking output folder named:"+folder_name)
-            os.mkdir(cwd+"/"+folder_name)
-            fname = args.filename.split('/')[-1]
-            shutil.copyfile(args.filename, cwd+"/"+folder_name+"/"+fname)
+            os.mkdir(os.filename+"/"+folder_name)
+            copyfile(args.filename, cwd+"/"+folder_name+"/"+args.filename)
             os.chdir(cwd+"/"+folder_name)
 
 
         if args.folder_name != None:
             folder_name = args.folder_name
-            cwd = os.getcwd()
+            cwd = os.path.dirname(args.filename)
             now = datetime.now() # current date and time
             #os.mkdir(cwd+"/"+folder_name)
             if os.path.exists(os.path.join(cwd,folder_name)) == False:
@@ -127,7 +121,7 @@ if __name__ == "__main__":
         # fold_out_file_name = args.webserver
 
         # args.webserver = scan_out_file_name
-        start = time.time()
+
         scan_main(args)
 
         # args.webserver = fold_out_file_name
@@ -135,9 +129,7 @@ if __name__ == "__main__":
         print(scan_out_file_name)
         args.filename = str(glob.glob('./*.tsv')[0])
         fold_main(args)
-        end = time.time()
-        elapsed_time = float(end-start)
-        print("elapsed time: {t:10.3f}".format(t=elapsed_time)) 
+
     except Exception as e:
 
         if args.webserver:
